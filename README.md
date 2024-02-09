@@ -1,2 +1,2 @@
-# Example
-An example greeter plugin
+# Embargo Plugin
+A plugin to track Embargo clan member's accomplishments
