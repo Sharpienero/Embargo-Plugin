@@ -11,6 +11,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
@@ -21,6 +22,7 @@ import net.runelite.client.ui.ClientToolbar;
 
 import java.awt.image.BufferedImage;
 import java.util.Collection;
+import net.runelite.api.QuestState;
 
 @Slf4j
 @PluginDescriptor(
@@ -34,6 +36,8 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private EmbargoConfig config;
+
+	private Collection<ItemStack> itemStacks;
 
 	@Getter
 	private EmbargoPanel panel;
@@ -50,6 +54,8 @@ public class EmbargoPlugin extends Plugin {
 		buildSidePanel();
 		log.info("Done building side panel");
 		log.info("Embargo Clan started!");
+
+
 	}
 
 	@Override
@@ -57,22 +63,21 @@ public class EmbargoPlugin extends Plugin {
 		log.info("Embargo Clan stopped!");
 	}
 
+
 	@Subscribe
-	public void onGameStateChanged(GameStateChanged gameStateChanged) {
-		if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Embargo Clan says " + config.greeting(), null);
-		}
+	public void onGameStateChanged(final GameStateChanged event) {
 	}
 
 	String bossName;
-
 	@Subscribe
 	public void onLootReceived(final LootReceived event) {
 		if (event.getType() != LootRecordType.NPC && event.getType() != LootRecordType.EVENT) {
 			return;
 		}
 
-		//itemStacks = event.getItems();
+		log.info(event.toString());
+
+		itemStacks = event.getItems();
 		bossName = event.getName();
 
 		// Send to API for pointHistories
