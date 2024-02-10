@@ -13,8 +13,6 @@ import java.awt.*;
 
 @ConfigGroup("embargo")
 public interface EmbargoConfig extends Config {
-    public JPanel discordButton = new JPanel();
-
     @ConfigItem(
 			keyName = "greeting",
 			name = "Welcome Greeting",
@@ -24,13 +22,4 @@ public interface EmbargoConfig extends Config {
 		return "Embargo Greeting";
 	}
 
-	@ConfigSection(
-			name = "Discord",
-			description = "Join our discord",
-			position = -20,
-			closedByDefault = false
-	)
-	String webhookSection = "Webhook Overrides";
-
-	JPanel sidePanel = new JPanel();
 }
