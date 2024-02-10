@@ -3,13 +3,6 @@ package gg.embargo;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
-import java.awt.*;
-
 
 @ConfigGroup("embargo")
 public interface EmbargoConfig extends Config {
@@ -21,5 +14,4 @@ public interface EmbargoConfig extends Config {
 	default String greeting() {
 		return "Embargo Greeting";
 	}
-
 }
