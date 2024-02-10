@@ -1,6 +1,7 @@
 package gg.embargo;
 
 import com.google.common.collect.HashMultimap;
+import com.google.gson.Gson;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 
@@ -9,21 +10,24 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.bank.BankSearch;
 import net.runelite.client.task.Schedule;
+import net.runelite.api.InventoryID;
 
 import net.runelite.client.callback.ClientThread;
 
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -253,6 +257,45 @@ public class EmbargoPlugin extends Plugin {
 //		// This is done here and not in each block because we don't want to rely on the order of the if clauses being correct.
 //		//configManager.setConfiguration(CONFIG_GROUP_KEY, WikiSyncConfig.WIKISYNC_VERSION_KEYNAME, maxVersion);
 //		log.debug("WikiSync version set to deployment number " + version);
+	}
+
+	@Subscribe
+	public void onScriptPostFired(ScriptPostFired event) {
+		if (event.getScriptId() == 277) {
+			this.getUntrackableItems(786445, InventoryID.BANK);
+		}
+	}
+
+	@Getter
+	enum UntrackableItems {
+
+		BOOK_OF_THE_DEAD(25818, 25819);
+
+
+		private final int itemId;
+
+		private final int placeholderId;
+
+		private UntrackableItems(int itemId, int placeholderId) {
+			this.itemId = itemId;
+			this.placeholderId = placeholderId;
+		}
+	}
+
+	private void getUntrackableItems(int componentId, InventoryID inventoryID) {
+		Widget widget = this.client.getWidget(componentId);
+		ItemContainer itemContainer = this.client.getItemContainer(inventoryID);
+		Widget[] children = widget.getChildren();
+		if (itemContainer != null && children != null) {
+
+			for(int i = 0; i < itemContainer.size(); ++i) {
+				Widget child = children[i];
+				var id = child.getItemId();
+				System.out.println(id);
+			}
+
+		}
+
 	}
 
 }
