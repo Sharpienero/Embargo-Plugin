@@ -8,30 +8,23 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.task.Schedule;
-import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.util.ImageUtil;
-import net.runelite.http.api.loottracker.LootRecordType;
-import net.runelite.client.ui.ClientToolbar;
 
 import net.runelite.client.callback.ClientThread;
 
-import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @PluginDescriptor(
@@ -129,7 +122,6 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onGameTick(GameTick gameTick)
 	{
-		log.info("aaaa");
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();
 	}
