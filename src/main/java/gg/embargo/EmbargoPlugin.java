@@ -25,12 +25,10 @@ import java.util.Collection;
 @Slf4j
 @PluginDescriptor(
 	name = "Embargo Clan",
-		description = "A plugin to help Embargo Clan properly track items and accomplishments.",
-		tags = {"embargo", "clan", "embargo.gg", "ironman"}
-
+	description = "A plugin to help Embargo Clan properly track items and accomplishments.",
+	tags = {"embargo", "clan", "embargo.gg", "ironman"}
 )
-public class EmbargoPlugin extends Plugin
-{
+public class EmbargoPlugin extends Plugin {
 	@Inject
 	private Client client;
 
@@ -47,8 +45,7 @@ public class EmbargoPlugin extends Plugin
 	private NavigationButton navButton;
 
 	@Override
-	protected void startUp() throws Exception
-	{
+	protected void startUp() throws Exception {
 		log.info("Starting to build side panel");
 		buildSidePanel();
 		log.info("Done building side panel");
@@ -56,24 +53,21 @@ public class EmbargoPlugin extends Plugin
 	}
 
 	@Override
-	protected void shutDown() throws Exception
-	{
+	protected void shutDown() throws Exception {
 		log.info("Embargo Clan stopped!");
 	}
 
 	@Subscribe
-	public void onGameStateChanged(GameStateChanged gameStateChanged)
-	{
-		if (gameStateChanged.getGameState() == GameState.LOGGED_IN)
-		{
+	public void onGameStateChanged(GameStateChanged gameStateChanged) {
+		if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Embargo Clan says " + config.greeting(), null);
 		}
 	}
 
 	String bossName;
+
 	@Subscribe
-	public void onLootReceived(final LootReceived event)
-	{
+	public void onLootReceived(final LootReceived event) {
 		if (event.getType() != LootRecordType.NPC && event.getType() != LootRecordType.EVENT) {
 			return;
 		}
@@ -85,13 +79,11 @@ public class EmbargoPlugin extends Plugin
 	}
 
 	@Provides
-	EmbargoConfig provideConfig(ConfigManager configManager)
-	{
+	EmbargoConfig provideConfig(ConfigManager configManager) {
 		return configManager.getConfig(EmbargoConfig.class);
 	}
 
-	private void buildSidePanel()
-	{
+	private void buildSidePanel() {
 		log.info("Inside of buildSidePanel");
 		panel = injector.getInstance(EmbargoPanel.class);
 		panel.sidePanelInitializer();
