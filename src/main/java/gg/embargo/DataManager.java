@@ -30,6 +30,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
+
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -377,6 +379,36 @@ public class DataManager {
         return -1;
     }
 
+
+    protected void submitRaidLoot(ArrayList<String> players, ArrayList<Integer> items) {
+        //Convert both ArrayLists to JSON and send to route "asd"
+        var loot = new JsonObject();
+        loot.add("players", gson.toJsonTree(players));
+        loot.add("points", gson.toJsonTree(items));
+
+        Request request = new Request.Builder()
+                .url(UNTRACKABLE_POST_ENDPOINT)
+                .post(RequestBody.create(JSON, loot.toString()))
+                .build();
+
+        try {
+            okHttpClient.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, IOException e) {
+                    log.error("Failed to send submitRaidLoot");
+
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, Response response) throws IOException {
+                    log.error("Attempted to send submitRaidLoot");
+                }
+            });
+
+            } catch (IllegalArgumentException e) {
+            log.error("asd");
+        }
+    }
     protected int registerUserWithClan(String discordId, String username) {
         log.info("Attempting to register user with clan");
 

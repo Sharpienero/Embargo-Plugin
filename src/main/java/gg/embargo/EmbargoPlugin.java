@@ -19,6 +19,8 @@ import net.runelite.client.game.ItemClient;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemMapping;
 import net.runelite.client.game.ItemStack;
+import net.runelite.client.party.PartyMember;
+import net.runelite.client.party.PartyService;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
@@ -62,11 +64,15 @@ public class EmbargoPlugin extends Plugin {
 	@Inject
 	private EmbargoConfig config;
 
+	@Inject
+	private PartyService partyService;
+
 	@Getter
 	@Setter
 	private int lastManifestVersion = -1;
 
 	private int[] oldVarps;
+
 	private RuneScapeProfileType lastProfile;
 
 	@Setter
@@ -178,10 +184,23 @@ public class EmbargoPlugin extends Plugin {
 		return raidItems;
 	}
 	@Subscribe
-	private void OnRaidLootReceived(LootReceived loot) {
-		//TODO - Check if they are in a raid. If they're not, return
-		// If there is a purple, send the PURPLE_NAME, PARTY_MEMBERS,
-		// and DROP_NAME to the server
+	private void LootReceived(LootReceived loot) {
+		var partyMembers = partyService.getMembers();
+		if (partyMembers == null || partyMembers.isEmpty()) {
+			return;
+		}
+		ArrayList<String> partyMemberNames = new ArrayList<>();
+		ArrayList<Integer> itemsReceived = new ArrayList<>();
+		for (PartyMember m : partyMembers) {
+			partyMemberNames.add(m.getDisplayName());
+		}
+		if (!loot.getItems().isEmpty()) {
+			ArrayList<Integer> raidItems = getTOARaidItems();
+			if (raidItems.contains(loot.getName())) {
+				itemsReceived.add(loot.getAmount()); //TODO - change
+			}
+		}
+		dataManager.submitRaidLoot(partyMemberNames, itemsReceived);
 	}
 
 
