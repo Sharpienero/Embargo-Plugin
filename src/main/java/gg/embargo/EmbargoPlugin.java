@@ -236,7 +236,7 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired event) {
 		if (event.getScriptId() == 277) {
-			untrackableItemManager.getUntrackableItems(786445, InventoryID.BANK);
+			untrackableItemManager.getUntrackableItems();
 		}
 	}
 }

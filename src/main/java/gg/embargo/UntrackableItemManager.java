@@ -1,6 +1,5 @@
 package gg.embargo;
 
-import com.google.gson.*;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -8,9 +7,7 @@ import net.runelite.api.Client;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.callback.ClientThread;
 import okhttp3.*;
-import okhttp3.internal.http2.Header;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -28,15 +25,6 @@ public class UntrackableItemManager {
 
     @Inject
     private Client client;
-
-    @Inject
-    private ClientThread clientThread;
-
-    @Inject
-    private OkHttpClient okHttpClient;
-
-    @Inject
-    private EmbargoPlugin plugin;
 
     private static final String UNTRACKABLE_ENDPOINT = "https://embargo.gg/api/untrackables";
 
@@ -60,23 +48,20 @@ public class UntrackableItemManager {
 
         private final int itemId;
 
-        private UntrackableItems(int itemId) {
+        UntrackableItems(int itemId) {
             this.itemId = itemId;
         }
     }
 
-    private HashSet<Integer> parseSet(JsonArray j) {
-        HashSet<Integer> h = new HashSet<>();
-        for (JsonElement jObj : j) {
-            h.add(jObj.getAsInt());
+    void getUntrackableItems() {
+        Widget widget = client.getWidget(786445);
+        ItemContainer itemContainer = client.getItemContainer(InventoryID.BANK);
+        Widget[] children;
+        if (widget != null) {
+            children = widget.getChildren();
+        } else {
+            return;
         }
-        return h;
-    }
-
-    void getUntrackableItems(int componentId, InventoryID inventoryID) {
-        Widget widget = this.client.getWidget(componentId);
-        ItemContainer itemContainer = this.client.getItemContainer(inventoryID);
-        Widget[] children = widget.getChildren();
         if (itemContainer != null && children != null) {
 
             var itemMap = Arrays.stream(UntrackableItems.values()).map(UntrackableItems::getItemId).collect(Collectors.toCollection(HashSet::new));
@@ -90,7 +75,7 @@ public class UntrackableItemManager {
                 }
             }
 
-            OkHttpClient client = new OkHttpClient();
+            OkHttpClient httpClient = new OkHttpClient();
 
             RequestBody requestBody = new FormBody.Builder()
                     .add("itemIds", Arrays.toString(playerItems.toArray()))
@@ -102,14 +87,14 @@ public class UntrackableItemManager {
                     .build();
 
             try {
-                client.newCall(request).enqueue(new Callback() {
+                httpClient.newCall(request).enqueue(new Callback() {
                     @Override
-                    public void onFailure(Call call, IOException e) {
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
                         log.error("Something went wrong inside of untrackable items");
                     }
 
                     @Override
-                    public void onResponse(Call call, Response response) throws IOException {
+                    public void onResponse(@NonNull Call call, @NonNull Response response) {
                         if (response.isSuccessful()) {
                             log.info("good");
                         }
