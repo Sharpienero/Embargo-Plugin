@@ -150,7 +150,7 @@ public class EmbargoPlugin extends Plugin {
 
 		var discordId = discUser.userId;
 
-		var result = dataManager.registerUserWithClan(discordId);
+		var result = dataManager.registerUserWithClan(discordId, ign);
 		if (result == 200 || result == 409) {
 			isRegisteredWithEmbargo = true;
 		} else {

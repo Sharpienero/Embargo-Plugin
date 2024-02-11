@@ -377,13 +377,13 @@ public class DataManager {
         return -1;
     }
 
-    protected int registerUserWithClan(String discordId) {
+    protected int registerUserWithClan(String discordId, String username) {
         log.info("Attempting to register user with clan");
+
         Request request = new Request.Builder()
                 .url(REGISTER_ENDPOINT)
-                .post(RequestBody.create(JSON, "{\"discordId\":\"" + discordId + "\"}"))
+                .post(RequestBody.create(JSON, "{\"discordId\":\"" + discordId + "\",\"username\":\"" + username + "\"}"))
                 .build();
-
         try {
             Response response = okHttpClient.newCall(request).execute();
             if (response.isSuccessful()) {
