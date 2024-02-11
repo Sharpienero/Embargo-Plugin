@@ -2,6 +2,7 @@ package gg.embargo;
 
 import com.google.common.collect.HashMultimap;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 
@@ -25,10 +26,14 @@ import net.runelite.client.task.Schedule;
 import net.runelite.api.InventoryID;
 
 import net.runelite.client.callback.ClientThread;
+import okhttp3.*;
 
+import java.io.IOException;
+import java.lang.reflect.Array;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @PluginDescriptor(
@@ -82,8 +87,7 @@ public class EmbargoPlugin extends Plugin {
 	@Override
 	protected void startUp() throws Exception
 	{
-		log.info("WikiSync started!");
-		setTogglesBasedOnVersion();
+		log.info("Embargo Clan started!");
 		lastProfile = null;
 		varbitsToCheck = null;
 		varpsToCheck = null;
@@ -94,7 +98,7 @@ public class EmbargoPlugin extends Plugin {
 	@Override
 	protected void shutDown() throws Exception
 	{
-		log.info("WikiSync stopped!");
+		log.info("Embargo Clan stopped!");
 		dataManager.clearData();
 	}
 
@@ -238,27 +242,6 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	private void setTogglesBasedOnVersion()
-	{
-//		// Conditionally turn off certain features by default
-//		Integer version = configManager.getConfiguration(CONFIG_GROUP_KEY, WikiSyncConfig.WIKISYNC_VERSION_KEYNAME, Integer.class);
-//		if (version == null)
-//			return;
-//		int maxVersion = version;
-//		/* EXAMPLE TOGGLE SETTING CLAUSE */
-//		/* if (version < 2)
-//		{
-//			// Location tracking was added in deploy 2
-//			configManager.setConfiguration(CONFIG_GROUP_KEY, WikiSyncConfig.WIKISYNC_TOGGLE_KEYNAME, false);
-//			maxVersion = 2;
-//		}
-//		*/
-//
-//		// This is done here and not in each block because we don't want to rely on the order of the if clauses being correct.
-//		//configManager.setConfiguration(CONFIG_GROUP_KEY, WikiSyncConfig.WIKISYNC_VERSION_KEYNAME, maxVersion);
-//		log.debug("WikiSync version set to deployment number " + version);
-	}
-
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired event) {
 		if (event.getScriptId() == 277) {
@@ -269,33 +252,65 @@ public class EmbargoPlugin extends Plugin {
 	@Getter
 	enum UntrackableItems {
 
-		BOOK_OF_THE_DEAD(25818, 25819);
+		BOOK_OF_THE_DEAD(25818),
+		MUSIC_CAPE(13221),
+		MUSIC_CAPE_T(13222),
+		BARROWS_GLOVES(7462),
+		IMBUED_SARADOMIN_CAPE(21791),
+		IMBUED_GUTHIX_CAPE(21793),
+		IMBUED_ZAMORAK_CAPE(21795),
+		IMBUED_SARADOMIN_MAX_CAPE(21776),
+		IMBUED_ZAMORAK_MAX_CAPE(21780),
+		IMBUED_GUTHIX_MAX_CAPE(21784),
+		IMBUED_SARADOMIN_MAX_CAPE_I(24232),
+		IMBUED_ZAMORAK_MAX_CAPE_I(24233),
+		IMBUED_GUTHIX_MAX_CAPE_I(24234);
 
 
 		private final int itemId;
 
-		private final int placeholderId;
-
-		private UntrackableItems(int itemId, int placeholderId) {
+		private UntrackableItems(int itemId) {
 			this.itemId = itemId;
-			this.placeholderId = placeholderId;
 		}
 	}
 
 	private void getUntrackableItems(int componentId, InventoryID inventoryID) {
 		Widget widget = this.client.getWidget(componentId);
 		ItemContainer itemContainer = this.client.getItemContainer(inventoryID);
-		Widget[] children = widget.getChildren();
+        Widget[] children = widget.getChildren();
 		if (itemContainer != null && children != null) {
 
+            var itemMap = Arrays.stream(UntrackableItems.values()).map(UntrackableItems::getItemId).collect(Collectors.toCollection(HashSet::new));
+			List<Integer> playerItems = new ArrayList<>();
 			for(int i = 0; i < itemContainer.size(); ++i) {
+
 				Widget child = children[i];
-				var id = child.getItemId();
-				System.out.println(id);
+				var currentItem = child.getItemId();
+				if (itemMap.contains(currentItem)) {
+					playerItems.add(currentItem);
+				}
 			}
 
+			var url = "https://8964a381-c461-455d-912a-0967c58d89a6.mock.pstmn.io/untrackables";
+			OkHttpClient client = new OkHttpClient();
+
+			RequestBody requestBody = new FormBody.Builder()
+					.add("itemIds", Arrays.toString(playerItems.toArray()))
+					.build();
+			Request request = new Request.Builder()
+					.url(url)
+					.post(requestBody)
+					.build();
+
+			try {
+				Response response = client.newCall(request).execute();
+				log.info(response.body().string());
+
+				// Do something with the response.
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			System.out.println(playerItems);
 		}
-
 	}
-
 }
