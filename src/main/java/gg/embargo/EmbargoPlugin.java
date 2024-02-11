@@ -222,7 +222,7 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onStatChanged(StatChanged statChanged)
 	{
-		if (statChanged.getSkill() == null || statChanged.getSkill() == Skill.OVERALL)
+		if (statChanged.getSkill() == null)
 			return;
 		Integer cachedLevel = skillLevelCache.get(statChanged.getSkill().getName());
 		if (cachedLevel == null || cachedLevel != statChanged.getLevel())
