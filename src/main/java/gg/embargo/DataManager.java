@@ -314,20 +314,16 @@ public class DataManager {
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     if (response.isSuccessful()) {
-                        log.info("response.isSuccessful = True");
                         try {
                             // We want to be able to change the varbs and varps we get on the fly. To do so, we tell
                             // the client what to send the server on startup via the manifest.
                             if (response.body() == null) {
-                                log.info("Response.body() == null");
                                 log.error("Manifest request succeeded but returned empty body");
                                 response.close();
                                 return;
                             }
 
-                            log.info("Response.body() != null");
                             JsonObject j = new Gson().fromJson(response.body().string(), JsonObject.class);
-                            log.info(j.toString());
 
                             try {
                                 try {
@@ -340,10 +336,8 @@ public class DataManager {
                                     plugin.setLastManifestVersion(-1);
                                 }
                             } catch (NullPointerException e) {
-                                log.error("Manifest possibly missing varbits or varps entry from /manifest call");
                                 log.error(e.getLocalizedMessage());
                             } catch (ClassCastException e) {
-                                log.error("Manifest from /manifest call might have varbits or varps as not a list");
                                 log.error(e.getLocalizedMessage());
                             }
                         } catch (IOException | JsonSyntaxException e) {
@@ -362,6 +356,25 @@ public class DataManager {
             });
         } catch (IllegalArgumentException e) {
             log.error("asd");
+        }
+        return -1;
+    }
+
+    protected int registerUserWithClan(String discordId) {
+        log.info("Attempting to register user with clan");
+        Request request = new Request.Builder()
+                .url("https://embargo.gg/api/register")
+                .post(RequestBody.create(JSON, "{\"discordId\":\"" + discordId + "\"}"))
+                .build();
+
+        try {
+            Response response = okHttpClient.newCall(request).execute();
+            if (response.isSuccessful()) {
+                //200 success, 409 for already exists
+                return response.code();
+            }
+        } catch (IOException e) {
+            log.error("Failed to register user with clan", e);
         }
         return -1;
     }

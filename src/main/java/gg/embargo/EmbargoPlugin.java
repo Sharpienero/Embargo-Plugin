@@ -20,12 +20,15 @@ import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.discord.DiscordService;
+import net.runelite.api.clan.*;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 
 @Slf4j
 @PluginDescriptor(
@@ -43,6 +46,9 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private ClientThread clientThread;
+
+	@Inject
+	private DiscordService discordService;
 
 	@Inject
 	private Client client;
@@ -82,6 +88,8 @@ public class EmbargoPlugin extends Plugin {
 	// THIS VERSION SHOULD BE INCREMENTED EVERY RELEASE WHERE WE ADD A NEW TOGGLE
 	public static final int VERSION = 1;
 
+	private boolean isRegisteredWithEmbargo = false;
+
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager)
 	{
@@ -90,7 +98,8 @@ public class EmbargoPlugin extends Plugin {
 
 	@Override
 	protected void startUp() {
-		log.info("Embargo Clan started!");
+		log.info("Embargo Clan plugin started!");
+
 		buildSidePanel();
 		lastProfile = null;
 		varbitsToCheck = null;
@@ -101,9 +110,56 @@ public class EmbargoPlugin extends Plugin {
 
 	@Override
 	protected void shutDown() {
-		log.info("Embargo Clan stopped!");
+		log.info("Embargo Clan plugin stopped!");
 		dataManager.clearData();
 	}
+
+	private void registerUserWithClan() {
+		log.info("Attempting to register user with clan");
+		if (isRegisteredWithEmbargo) return;
+
+		if (client.getLocalPlayer() == null || client.getClanChannel() == null) {
+			return;
+		}
+
+		var discUser = discordService.getCurrentUser();
+		if (discUser == null) return;
+
+		//Check to make sure they're on STANDARD profile
+		if (RuneScapeProfileType.getCurrent(client) != RuneScapeProfileType.STANDARD) {
+			log.info("User is not on standard profile, not registering with clan");
+			return;
+		}
+
+		//Get the user's in game name
+		String ign = client.getLocalPlayer().getName();
+		ClanChannel clan = client.getClanChannel();
+		if (!Objects.equals(clan.getName(), "Embargo")) {
+			return;
+		}
+
+		var inClan = clan.findMember(ign);
+		if (inClan == null) return;
+
+		var clanRank = inClan.getRank();
+
+		if (clanRank == ClanRank.GUEST) {
+			return;
+		}
+
+		var discordId = discUser.userId;
+
+		var result = dataManager.registerUserWithClan(discordId);
+		if (result == 200 || result == 409) {
+			isRegisteredWithEmbargo = true;
+		} else {
+			log.error("User registration with clan failed with status code: " + result);
+		}
+
+		log.info("User registration with clan result: " + result);
+	}
+
+
 
 	private void buildSidePanel() {
 		log.info("Inside of buildSidePanel");
@@ -144,6 +200,7 @@ public class EmbargoPlugin extends Plugin {
 	{
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();
+		registerUserWithClan();
 	}
 
 	public void checkProfileChange()
