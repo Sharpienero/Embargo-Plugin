@@ -164,7 +164,7 @@ public class EmbargoPlugin extends Plugin {
 
 		log.info("User registration with clan result: " + result);
 	}
-	
+
 	private ArrayList<Integer> getTOARaidItems() {
 		ArrayList<Integer> raidItems = new ArrayList<>();
 		raidItems.add(ItemID.TUMEKENS_SHADOW);
@@ -178,13 +178,10 @@ public class EmbargoPlugin extends Plugin {
 		return raidItems;
 	}
 	@Subscribe
-	private void OnLootReceived(LootReceived loot) {
-		//TODO - Check if they are in a raid. If they are and there is a purple, send an
-		// event to the server that awards points for participating in a clan event
-		// with guild mates + getting a purple.
-		// Perhaps check the loot against the list of all possible raids items. If it matches, check to see if the
-		// member is in a party. If they are, check to see if those players in the party are a part of the clan.
-		// If any are in the clan and party, award points properly. If no other people, award entire point to single member.
+	private void OnRaidLootReceived(LootReceived loot) {
+		//TODO - Check if they are in a raid. If they're not, return
+		// If there is a purple, send the PURPLE_NAME, PARTY_MEMBERS,
+		// and DROP_NAME to the server
 	}
 
 
