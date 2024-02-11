@@ -1,6 +1,5 @@
 package gg.embargo;
 
-import gg.embargo.EmbargoPlugin;
 import net.runelite.client.RuneLite;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 
