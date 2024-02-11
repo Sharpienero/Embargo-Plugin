@@ -128,7 +128,7 @@ public class EmbargoPlugin extends Plugin {
 	public void checkProfileChange()
 	{
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
-		if (r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null)
+		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
 		{
 			// profile change, we should clear the datamanager and do a new initial dump
 			log.debug("Profile seemed to change... Reloading all data and updating profile");
