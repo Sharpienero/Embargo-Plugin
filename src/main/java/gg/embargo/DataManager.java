@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, andmcadams
+ * modified by Sharpienero, Contronym
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +43,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import okio.Buffer;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -239,7 +239,7 @@ public class DataManager
         {
             if (!response.isSuccessful())
             {
-                // If we failed to submit, readd the data to the data lists (unless there are newer ones)
+                // If we failed to submit, read the data to the data lists (unless there are newer ones)
                 log.error("Failed to submit data, attempting to reload dropped data...");
                 this.restoreData(postRequestBody);
             }
@@ -259,18 +259,6 @@ public class DataManager
             h.add(jObj.getAsInt());
         }
         return h;
-    }
-
-    private static String bodyToString(final Request request){
-
-        try {
-            final Request copy = request.newBuilder().build();
-            final Buffer buffer = new Buffer();
-            copy.body().writeTo(buffer);
-            return buffer.readUtf8();
-        } catch (final IOException e) {
-            return "did not work";
-        }
     }
 
     protected void getManifest()
@@ -319,14 +307,11 @@ public class DataManager
                                 log.info("After plugin.set");
                                 try
                                 {
-                                    // Maybe this function should be run synch and this should be done outside of this
                                     int manifestVersion = j.get("version").getAsInt();
                                     if (plugin.getLastManifestVersion() != manifestVersion)
                                     {
                                         plugin.setLastManifestVersion(manifestVersion);
-                                        clientThread.invoke(() -> {
-                                            plugin.loadInitialData();
-                                        });
+                                        clientThread.invoke(() -> plugin.loadInitialData());
                                     }
                                 }
                                 catch (UnsupportedOperationException | NullPointerException exception)
@@ -335,12 +320,10 @@ public class DataManager
                                 }
                             }
                             catch (NullPointerException e) {
-                                // This is probably an issue with the server. "varbits" or "varps" might be missing.
                                 log.error("Manifest possibly missing varbits or varps entry from /manifest call");
                                 log.error(e.getLocalizedMessage());
                             }
                             catch (ClassCastException e) {
-                                // This is probably an issue with the server. "varbits" or "varps" might be not be a list.
                                 log.error("Manifest from /manifest call might have varbits or varps as not a list");
                                 log.error(e.getLocalizedMessage());
                             }

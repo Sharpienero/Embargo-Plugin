@@ -62,7 +62,7 @@ public class EmbargoPlugin extends Plugin {
 	private final HashMultimap<Integer, Integer> varpToVarbitMapping = HashMultimap.create();
 	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
-	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 60;
+	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
 
 	public static final String CONFIG_GROUP_KEY = "EmbargoClan";
