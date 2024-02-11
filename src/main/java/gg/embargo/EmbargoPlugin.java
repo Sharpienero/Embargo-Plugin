@@ -17,8 +17,12 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
+import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,6 +63,15 @@ public class EmbargoPlugin extends Plugin {
 	@Setter
 	private HashSet<Integer> varpsToCheck;
 
+	@Getter
+	private EmbargoPanel panel;
+
+	@Inject
+	private ClientToolbar clientToolbar;
+
+	private BufferedImage icon;
+	private NavigationButton navButton;
+
 	private final HashMultimap<Integer, Integer> varpToVarbitMapping = HashMultimap.create();
 	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
@@ -78,6 +91,7 @@ public class EmbargoPlugin extends Plugin {
 	@Override
 	protected void startUp() {
 		log.info("Embargo Clan started!");
+		buildSidePanel();
 		lastProfile = null;
 		varbitsToCheck = null;
 		varpsToCheck = null;
@@ -89,6 +103,15 @@ public class EmbargoPlugin extends Plugin {
 	protected void shutDown() {
 		log.info("Embargo Clan stopped!");
 		dataManager.clearData();
+	}
+
+	private void buildSidePanel() {
+		log.info("Inside of buildSidePanel");
+		panel = injector.getInstance(EmbargoPanel.class);
+		panel.sidePanelInitializer();
+		icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
+		navButton = NavigationButton.builder().tooltip("Embargo Clan").icon(icon).priority(6).panel(panel).build();
+		clientToolbar.addNavigation(navButton);
 	}
 
 	@Schedule(
