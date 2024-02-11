@@ -10,6 +10,7 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import okhttp3.*;
+import okhttp3.internal.http2.Header;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -37,7 +38,7 @@ public class UntrackableItemManager {
     @Inject
     private EmbargoPlugin plugin;
 
-    private static final String UNTRACKABLE_ENDPOINT = "https://8964a381-c461-455d-912a-0967c58d89a6.mock.pstmn.io/untrackables";
+    private static final String UNTRACKABLE_ENDPOINT = "https://embargo.gg/api/untrackables";
 
     @Getter
     enum UntrackableItems {
@@ -97,6 +98,7 @@ public class UntrackableItemManager {
             Request request = new Request.Builder()
                     .url(UNTRACKABLE_ENDPOINT)
                     .post(requestBody)
+                    .addHeader("Content-Type", "application/json")
                     .build();
 
             try {

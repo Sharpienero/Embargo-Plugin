@@ -74,8 +74,8 @@ public class DataManager
     private final HashMap<String, Integer> levelData = new HashMap<>();
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private static final String MANIFEST_ENDPOINT = "https://9fba01f8-7689-4a3f-af1b-5e2445aa72c0.mock.pstmn.io/runelite/manifest";
-    private static final String VERSION_ENDPOINT = "https://8964a381-c461-455d-912a-0967c58d89a6.mock.pstmn.io/runelite/version";
+    private static final String MANIFEST_ENDPOINT = "https://embargo.gg/api/runelite/manifest";
+    private static final String VERSION_ENDPOINT = "https://embargo.gg/api/version";
     private static final String POST_ENDPOINT = "https://8964a381-c461-455d-912a-0967c58d89a6.mock.pstmn.io/runelite/submit";
 
     public void storeVarbitChanged(int varbIndex, int varbValue)
