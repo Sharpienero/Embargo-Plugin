@@ -76,8 +76,7 @@ public class EmbargoPlugin extends Plugin {
 	}
 
 	@Override
-	protected void startUp() throws Exception
-	{
+	protected void startUp() {
 		log.info("Embargo Clan started!");
 		lastProfile = null;
 		varbitsToCheck = null;
@@ -87,8 +86,7 @@ public class EmbargoPlugin extends Plugin {
 	}
 
 	@Override
-	protected void shutDown() throws Exception
-	{
+	protected void shutDown() {
 		log.info("Embargo Clan stopped!");
 		dataManager.clearData();
 	}
