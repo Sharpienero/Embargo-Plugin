@@ -1,11 +1,7 @@
 package gg.embargo;
 
 import com.google.common.collect.HashMultimap;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.google.inject.Provides;
-import javax.inject.Inject;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -14,26 +10,18 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.plugins.bank.BankSearch;
 import net.runelite.client.task.Schedule;
-import net.runelite.api.InventoryID;
 
-import net.runelite.client.callback.ClientThread;
-import okhttp3.*;
-
-import java.io.IOException;
-import java.lang.reflect.Array;
+import javax.inject.Inject;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.HashSet;
 
 @Slf4j
 @PluginDescriptor(
@@ -45,6 +33,9 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private DataManager dataManager;
+
+	@Inject
+	private UntrackableItemManager untrackableItemManager;
 
 	@Inject
 	private ClientThread clientThread;
@@ -245,72 +236,7 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired event) {
 		if (event.getScriptId() == 277) {
-			this.getUntrackableItems(786445, InventoryID.BANK);
-		}
-	}
-
-	@Getter
-	enum UntrackableItems {
-
-		BOOK_OF_THE_DEAD(25818),
-		MUSIC_CAPE(13221),
-		MUSIC_CAPE_T(13222),
-		BARROWS_GLOVES(7462),
-		IMBUED_SARADOMIN_CAPE(21791),
-		IMBUED_GUTHIX_CAPE(21793),
-		IMBUED_ZAMORAK_CAPE(21795),
-		IMBUED_SARADOMIN_MAX_CAPE(21776),
-		IMBUED_ZAMORAK_MAX_CAPE(21780),
-		IMBUED_GUTHIX_MAX_CAPE(21784),
-		IMBUED_SARADOMIN_MAX_CAPE_I(24232),
-		IMBUED_ZAMORAK_MAX_CAPE_I(24233),
-		IMBUED_GUTHIX_MAX_CAPE_I(24234);
-
-
-		private final int itemId;
-
-		private UntrackableItems(int itemId) {
-			this.itemId = itemId;
-		}
-	}
-
-	private void getUntrackableItems(int componentId, InventoryID inventoryID) {
-		Widget widget = this.client.getWidget(componentId);
-		ItemContainer itemContainer = this.client.getItemContainer(inventoryID);
-        Widget[] children = widget.getChildren();
-		if (itemContainer != null && children != null) {
-
-            var itemMap = Arrays.stream(UntrackableItems.values()).map(UntrackableItems::getItemId).collect(Collectors.toCollection(HashSet::new));
-			List<Integer> playerItems = new ArrayList<>();
-			for(int i = 0; i < itemContainer.size(); ++i) {
-
-				Widget child = children[i];
-				var currentItem = child.getItemId();
-				if (itemMap.contains(currentItem)) {
-					playerItems.add(currentItem);
-				}
-			}
-
-			var url = "https://8964a381-c461-455d-912a-0967c58d89a6.mock.pstmn.io/untrackables";
-			OkHttpClient client = new OkHttpClient();
-
-			RequestBody requestBody = new FormBody.Builder()
-					.add("itemIds", Arrays.toString(playerItems.toArray()))
-					.build();
-			Request request = new Request.Builder()
-					.url(url)
-					.post(requestBody)
-					.build();
-
-			try {
-				Response response = client.newCall(request).execute();
-				log.info(response.body().string());
-
-				// Do something with the response.
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			System.out.println(playerItems);
+			untrackableItemManager.getUntrackableItems(786445, InventoryID.BANK);
 		}
 	}
 }
