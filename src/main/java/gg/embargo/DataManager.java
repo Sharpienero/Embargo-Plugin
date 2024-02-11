@@ -76,7 +76,7 @@ public class DataManager {
 
      enum APIRoutes {
          MANIFEST("runelite/manifest"),
-         VERSION("version"), 
+         VERSION("version"),
          UNTRACKABLES("untrackables"),
          REGISTER("register");
 
