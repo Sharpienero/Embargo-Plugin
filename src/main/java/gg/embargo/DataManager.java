@@ -73,9 +73,30 @@ public class DataManager {
     private final HashMap<String, Integer> levelData = new HashMap<>();
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private static final String MANIFEST_ENDPOINT = "https://embargo.gg/api/runelite/manifest";
-    private static final String VERSION_ENDPOINT = "https://embargo.gg/api/version";
-    private static final String POST_ENDPOINT = "https://8964a381-c461-455d-912a-0967c58d89a6.mock.pstmn.io/runelite/submit";
+
+     enum APIRoutes {
+         MANIFEST("runelite/manifest"),
+         VERSION("version"), 
+         UNTRACKABLES("untrackables"),
+         REGISTER("register");
+
+         APIRoutes(String route) {
+             this.route = route;
+         }
+
+         private final String route;
+
+         @Override
+         public String toString() {
+             return route;
+         }
+     }
+
+    private static final String API_URI = "https://embargo.gg/api/";
+    private static final String MANIFEST_ENDPOINT = API_URI + APIRoutes.MANIFEST;
+    private static final String VERSION_ENDPOINT = API_URI + APIRoutes.VERSION;
+    private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
+    private static final String REGISTER_ENDPOINT = API_URI + APIRoutes.REGISTER;
 
     public void storeVarbitChanged(int varbIndex, int varbValue) {
         synchronized (this) {
@@ -84,7 +105,6 @@ public class DataManager {
     }
 
     public void storeVarbitChangedIfNotStored(int varbIndex, int varbValue) {
-        log.debug("Attempting to store varb with index " + varbIndex + " and value " + varbValue);
         synchronized (this) {
             if (!varbData.containsKey(varbIndex))
                 this.storeVarbitChanged(varbIndex, varbValue);
@@ -92,14 +112,12 @@ public class DataManager {
     }
 
     public void storeVarpChanged(int varpIndex, int varpValue) {
-        log.debug("Stored varp with index " + varpIndex + " and value " + varpValue);
         synchronized (this) {
             varpData.put(varpIndex, varpValue);
         }
     }
 
     public void storeVarpChangedIfNotStored(int varpIndex, int varpValue) {
-        log.debug("Attempting to store varp with index " + varpIndex + " and value " + varpValue);
         synchronized (this) {
             if (!varpData.containsKey(varpIndex))
                 this.storeVarpChanged(varpIndex, varpValue);
@@ -107,14 +125,12 @@ public class DataManager {
     }
 
     public void storeSkillChanged(String skill, int skillLevel) {
-        log.debug("Stored skill " + skill + " with level " + skillLevel);
         synchronized (this) {
             levelData.put(skill, skillLevel);
         }
     }
 
     public void storeSkillChangedIfNotChanged(String skill, int skillLevel) {
-        log.debug("Attempting to store skill " + skill + " with level " + skillLevel);
         synchronized (this) {
             if (!levelData.containsKey(skill))
                 storeSkillChanged(skill, skillLevel);
@@ -199,7 +215,7 @@ public class DataManager {
         log.debug("Submitting changed data to endpoint...");
         JsonObject postRequestBody = convertToJson();
         Request request = new Request.Builder()
-                .url(POST_ENDPOINT)
+                .url(UNTRACKABLE_POST_ENDPOINT)
                 .post(RequestBody.create(JSON, postRequestBody.toString()))
                 .build();
 
@@ -298,6 +314,7 @@ public class DataManager {
 
     protected int getVersion() {
         log.debug("Attempting to get manifest version...");
+        log.info(MANIFEST_ENDPOINT);
         Request request = new Request.Builder()
                 .url(MANIFEST_ENDPOINT)
                 .build();
@@ -363,7 +380,7 @@ public class DataManager {
     protected int registerUserWithClan(String discordId) {
         log.info("Attempting to register user with clan");
         Request request = new Request.Builder()
-                .url("https://embargo.gg/api/register")
+                .url(REGISTER_ENDPOINT)
                 .post(RequestBody.create(JSON, "{\"discordId\":\"" + discordId + "\"}"))
                 .build();
 
@@ -373,9 +390,12 @@ public class DataManager {
                 //200 success, 409 for already exists
                 return response.code();
             }
+
+            response.close();
         } catch (IOException e) {
             log.error("Failed to register user with clan", e);
         }
+
         return -1;
     }
 }

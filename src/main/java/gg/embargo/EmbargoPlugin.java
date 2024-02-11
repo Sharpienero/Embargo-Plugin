@@ -82,6 +82,7 @@ public class EmbargoPlugin extends Plugin {
 	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
+	private final int SECONDS_BETWEEN_REGISTRATION_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
 
 	public static final String CONFIG_GROUP_KEY = "Embargo";
@@ -195,12 +196,21 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
+	@Schedule(
+			period = SECONDS_BETWEEN_REGISTRATION_CHECKS,
+			unit = ChronoUnit.SECONDS,
+			asynchronous = true
+	)
+	public void scheduleRegisterUserWithClan() {
+		registerUserWithClan();
+	}
+
 	@Subscribe
 	public void onGameTick(GameTick gameTick)
 	{
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();
-		registerUserWithClan();
+
 	}
 
 	public void checkProfileChange()
