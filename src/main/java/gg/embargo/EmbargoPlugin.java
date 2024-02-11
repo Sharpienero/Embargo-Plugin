@@ -61,8 +61,8 @@ public class EmbargoPlugin extends Plugin {
 
 	private final HashMultimap<Integer, Integer> varpToVarbitMapping = HashMultimap.create();
 	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
-	private final int SECONDS_BETWEEN_UPLOADS = 10;
-	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 20*60;
+	private final int SECONDS_BETWEEN_UPLOADS = 30;
+	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 60;
 	private final int VARBITS_ARCHIVE_ID = 14;
 
 	public static final String CONFIG_GROUP_KEY = "EmbargoClan";
@@ -130,7 +130,7 @@ public class EmbargoPlugin extends Plugin {
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
 		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
 		{
-			// profile change, we should clear the datamanager and do a new initial dump
+			// profile change, we should clear the dataManager and do a new initial dump
 			log.debug("Profile seemed to change... Reloading all data and updating profile");
 			lastProfile = r;
 			dataManager.clearData();
@@ -189,8 +189,7 @@ public class EmbargoPlugin extends Plugin {
 		}
 		for(Skill s : Skill.values())
 		{
-			if (s != Skill.OVERALL)
-				dataManager.storeSkillChanged(s.getName(), client.getRealSkillLevel(s));
+			dataManager.storeSkillChanged(s.getName(), client.getRealSkillLevel(s));
 		}
 	}
 
