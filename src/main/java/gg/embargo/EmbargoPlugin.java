@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.Item.*;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.StatChanged;
@@ -14,8 +15,13 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemClient;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemMapping;
+import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -25,10 +31,10 @@ import net.runelite.api.clan.*;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Array;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Predicate;
 
 @Slf4j
 @PluginDescriptor(
@@ -128,7 +134,6 @@ public class EmbargoPlugin extends Plugin {
 
 		//Check to make sure they're on STANDARD profile
 		if (RuneScapeProfileType.getCurrent(client) != RuneScapeProfileType.STANDARD) {
-			log.info("User is not on standard profile, not registering with clan");
 			return;
 		}
 
@@ -159,7 +164,28 @@ public class EmbargoPlugin extends Plugin {
 
 		log.info("User registration with clan result: " + result);
 	}
+	
+	private ArrayList<Integer> getTOARaidItems() {
+		ArrayList<Integer> raidItems = new ArrayList<>();
+		raidItems.add(ItemID.TUMEKENS_SHADOW);
+		raidItems.add(ItemID.MASORI_MASK);
+		raidItems.add(ItemID.MASORI_BODY);
+		raidItems.add(ItemID.MASORI_CHAPS);
+		raidItems.add(ItemID.ELIDINIS_WARD);
+		raidItems.add(ItemID.FANG);
+		raidItems.add(ItemID.LIGHTBEARER);
 
+		return raidItems;
+	}
+	@Subscribe
+	private void OnLootReceived(LootReceived loot) {
+		//TODO - Check if they are in a raid. If they are and there is a purple, send an
+		// event to the server that awards points for participating in a clan event
+		// with guild mates + getting a purple.
+		// Perhaps check the loot against the list of all possible raids items. If it matches, check to see if the
+		// member is in a party. If they are, check to see if those players in the party are a part of the clan.
+		// If any are in the clan and party, award points properly. If no other people, award entire point to single member.
+	}
 
 
 	private void buildSidePanel() {
