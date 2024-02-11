@@ -65,7 +65,7 @@ public class EmbargoPlugin extends Plugin {
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
 
-	public static final String CONFIG_GROUP_KEY = "EmbargoClan";
+	public static final String CONFIG_GROUP_KEY = "Embargo";
 	// THIS VERSION SHOULD BE INCREMENTED EVERY RELEASE WHERE WE ADD A NEW TOGGLE
 	public static final int VERSION = 1;
 
