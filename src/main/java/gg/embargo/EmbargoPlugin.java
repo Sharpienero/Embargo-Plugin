@@ -332,7 +332,12 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired event) {
 		if (event.getScriptId() == 277) {
-			untrackableItemManager.getUntrackableItems();
+			if (client == null || client.getLocalPlayer() == null) {
+				return;
+			}
+
+			var username = client.getLocalPlayer().getName();
+			untrackableItemManager.getUntrackableItems(username);
 		}
 	}
 }

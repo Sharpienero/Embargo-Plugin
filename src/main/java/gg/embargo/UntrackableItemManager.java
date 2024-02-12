@@ -53,7 +53,7 @@ public class UntrackableItemManager {
         }
     }
 
-    void getUntrackableItems() {
+    void getUntrackableItems(String username) {
         Widget widget = client.getWidget(786445);
         ItemContainer itemContainer = client.getItemContainer(InventoryID.BANK);
         Widget[] children;
@@ -76,13 +76,16 @@ public class UntrackableItemManager {
             }
 
             OkHttpClient httpClient = new OkHttpClient();
+            var RequestBody = new FormBody.Builder();
+            for (int i=0; i < playerItems.size(); i++) {
+                RequestBody.add("itemIds[" + i + "]", String.valueOf(playerItems.get(i)));
+            }
 
-            RequestBody requestBody = new FormBody.Builder()
-                    .add("itemIds", Arrays.toString(playerItems.toArray()))
-                    .build();
+            RequestBody.add("username", username);
+
             Request request = new Request.Builder()
                     .url(UNTRACKABLE_ENDPOINT)
-                    .post(requestBody)
+                    .post(RequestBody.build())
                     .addHeader("Content-Type", "application/json")
                     .build();
 
