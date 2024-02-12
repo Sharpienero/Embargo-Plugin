@@ -171,39 +171,6 @@ public class EmbargoPlugin extends Plugin {
 		log.info("User registration with clan result: " + result);
 	}
 
-	private ArrayList<Integer> getTOARaidItems() {
-		ArrayList<Integer> raidItems = new ArrayList<>();
-		raidItems.add(ItemID.TUMEKENS_SHADOW);
-		raidItems.add(ItemID.MASORI_MASK);
-		raidItems.add(ItemID.MASORI_BODY);
-		raidItems.add(ItemID.MASORI_CHAPS);
-		raidItems.add(ItemID.ELIDINIS_WARD);
-		raidItems.add(ItemID.FANG);
-		raidItems.add(ItemID.LIGHTBEARER);
-
-		return raidItems;
-	}
-	@Subscribe
-	private void LootReceived(LootReceived loot) {
-		var partyMembers = partyService.getMembers();
-		if (partyMembers == null || partyMembers.isEmpty()) {
-			return;
-		}
-		ArrayList<String> partyMemberNames = new ArrayList<>();
-		ArrayList<Integer> itemsReceived = new ArrayList<>();
-		for (PartyMember m : partyMembers) {
-			partyMemberNames.add(m.getDisplayName());
-		}
-		if (!loot.getItems().isEmpty()) {
-			ArrayList<Integer> raidItems = getTOARaidItems();
-			if (raidItems.contains(loot.getName())) {
-				itemsReceived.add(loot.getAmount()); //TODO - change
-			}
-		}
-		dataManager.submitRaidLoot(partyMemberNames, itemsReceived);
-	}
-
-
 	private void buildSidePanel() {
 		log.info("Inside of buildSidePanel");
 		panel = injector.getInstance(EmbargoPanel.class);

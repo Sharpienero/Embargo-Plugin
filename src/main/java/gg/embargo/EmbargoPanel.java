@@ -1,6 +1,8 @@
 package gg.embargo;
 
 import gg.embargo.EmbargoConfig;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
@@ -24,8 +26,15 @@ public class EmbargoPanel extends PluginPanel {
     private static final ImageIcon GITHUB_HOVER;
 
     private final JPanel titlePanel;
+
+    private final JPanel introductionPanel;
     private final JPanel supportButtons;
     final JPanel fetchedInfoPanel;
+
+    private final PluginErrorPanel errorPanel = new PluginErrorPanel();
+    private final PluginErrorPanel futureFunctionalityPanel = new PluginErrorPanel();
+
+    private final JLabel introductionLabel = new JLabel("Welcome to Embargo");
 
     private final JPanel sidePanel;
 
@@ -35,6 +44,7 @@ public class EmbargoPanel extends PluginPanel {
         this.sidePanel = new JPanel();
         this.titlePanel = new JPanel();
         this.fetchedInfoPanel = new JPanel();
+        this.introductionPanel = new JPanel();
     }
 
     public void sidePanelInitializer() {
@@ -42,8 +52,13 @@ public class EmbargoPanel extends PluginPanel {
         this.setBorder(new EmptyBorder(10, 10, 10, 10));
         this.sidePanel.setLayout(new BoxLayout(this.sidePanel, BoxLayout.Y_AXIS));
         this.sidePanel.add(this.buildTitlePanel());
+        this.sidePanel.add(this.buildIntroductionPanel());
+
+
+        // 5px tall Spacer
         this.sidePanel.add(Box.createRigidArea(new Dimension(0, 5)));
 
+        // Discord + Github button at the bottom of the panel
         this.sidePanel.add(this.buildSupportbuttons());
 
         // Ensure to build all the panels on the initial load, do not build them every time I add or remove.
@@ -76,12 +91,29 @@ public class EmbargoPanel extends PluginPanel {
         GITHUB_HOVER = new ImageIcon(ImageUtil.luminanceOffset(githubPNG, -80));
     }
 
+    private JPanel buildIntroductionPanel() {
+        introductionPanel.setLayout(new BorderLayout());
+        introductionPanel.setBorder(new EmptyBorder(2, 0, 3, 0));
+
+        JPanel introductionSection = new JPanel(new CardLayout());
+        introductionSection.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        introductionSection.setOpaque(false);
+
+        introductionSection.add(introductionLabel);
+        errorPanel.setContent("Current Functionality", "Detects and uploads your Quest Points, Achievement Diaries, Combat Achievement, Untrackable Items, and your skill levels.");
+        futureFunctionalityPanel.setContent("Future Functionality", "Display your clan rank, account score, community score, what you are missing for a rank up, and much more!");
+        introductionPanel.add(errorPanel, "North");
+        introductionPanel.add(futureFunctionalityPanel, "South");
+
+        return introductionPanel;
+    }
+
     private JPanel buildTitlePanel() {
         titlePanel.setBorder(new CompoundBorder(new EmptyBorder(5, 0, 0, 0), new MatteBorder(0, 0, 1, 0, new Color(37, 125, 141))));
         titlePanel.setLayout(new BorderLayout());
         PluginErrorPanel errorPanel = new PluginErrorPanel();
-        errorPanel.setBorder(new EmptyBorder(2, 0, 3, 0));
-        errorPanel.setContent("Embargo Clan", "We Don't Trade");
+        errorPanel.setBorder(new EmptyBorder(2, 0, 1, 0));
+        errorPanel.setContent("Embargo Clan Plugin", "");
         titlePanel.add(errorPanel, "Center");
         return titlePanel;
     }

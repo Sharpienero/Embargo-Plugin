@@ -326,12 +326,12 @@ public class DataManager {
         try {
             okHttpClient.newCall(request).enqueue(new Callback() {
                 @Override
-                public void onFailure(Call call, IOException e) {
+                public void onFailure(@NonNull Call call, IOException e) {
                     log.error("Error retrieving manifest", e);
                 }
 
                 @Override
-                public void onResponse(Call call, Response response) throws IOException {
+                public void onResponse(@NonNull Call call, Response response) throws IOException {
                     if (response.isSuccessful()) {
                         try {
                             // We want to be able to change the varbs and varps we get on the fly. To do so, we tell
@@ -354,9 +354,7 @@ public class DataManager {
                                 } catch (UnsupportedOperationException | NullPointerException exception) {
                                     plugin.setLastManifestVersion(-1);
                                 }
-                            } catch (NullPointerException e) {
-                                log.error(e.getLocalizedMessage());
-                            } catch (ClassCastException e) {
+                            } catch (NullPointerException | ClassCastException e) {
                                 log.error(e.getLocalizedMessage());
                             }
                         } catch (IOException | JsonSyntaxException e) {
@@ -379,36 +377,6 @@ public class DataManager {
         return -1;
     }
 
-
-    protected void submitRaidLoot(ArrayList<String> players, ArrayList<Integer> items) {
-        //Convert both ArrayLists to JSON and send to route "asd"
-        var loot = new JsonObject();
-        loot.add("players", gson.toJsonTree(players));
-        loot.add("points", gson.toJsonTree(items));
-
-        Request request = new Request.Builder()
-                .url(UNTRACKABLE_POST_ENDPOINT)
-                .post(RequestBody.create(JSON, loot.toString()))
-                .build();
-
-        try {
-            okHttpClient.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, IOException e) {
-                    log.error("Failed to send submitRaidLoot");
-
-                }
-
-                @Override
-                public void onResponse(@NonNull Call call, Response response) throws IOException {
-                    log.error("Attempted to send submitRaidLoot");
-                }
-            });
-
-            } catch (IllegalArgumentException e) {
-            log.error("asd");
-        }
-    }
     protected int registerUserWithClan(String discordId, String username) {
         log.info("Attempting to register user with clan");
 
