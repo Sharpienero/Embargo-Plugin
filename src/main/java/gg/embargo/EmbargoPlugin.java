@@ -7,10 +7,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.Item.*;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.events.StatChanged;
-import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
@@ -113,7 +110,20 @@ public class EmbargoPlugin extends Plugin {
 	protected void startUp() {
 		log.info("Embargo Clan plugin started!");
 
-		buildSidePanel();
+		//Let's build out the sidepanel
+		panel = injector.getInstance(EmbargoPanel.class);
+		panel.init();
+		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
+
+		navButton = NavigationButton.builder()
+				.tooltip("Embargo Clan")
+				.icon(icon)
+				.priority(100)
+				.panel(panel)
+				.build();
+
+		clientToolbar.addNavigation(navButton);
+
 		lastProfile = null;
 		varbitsToCheck = null;
 		varpsToCheck = null;
@@ -125,6 +135,10 @@ public class EmbargoPlugin extends Plugin {
 	protected void shutDown() {
 		log.info("Embargo Clan plugin stopped!");
 		dataManager.clearData();
+		panel.deinit();
+		clientToolbar.removeNavigation(navButton);
+		panel = null;
+		navButton = null;
 	}
 
 	private void registerUserWithClan() {
@@ -171,15 +185,6 @@ public class EmbargoPlugin extends Plugin {
 		log.info("User registration with clan result: " + result);
 	}
 
-	private void buildSidePanel() {
-		log.info("Inside of buildSidePanel");
-		panel = injector.getInstance(EmbargoPanel.class);
-		panel.sidePanelInitializer();
-		icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
-		navButton = NavigationButton.builder().tooltip("Embargo Clan").icon(icon).priority(6).panel(panel).build();
-		clientToolbar.addNavigation(navButton);
-	}
-
 	@Schedule(
 			period = SECONDS_BETWEEN_UPLOADS,
 			unit = ChronoUnit.SECONDS,
@@ -217,13 +222,31 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onGameTick(GameTick gameTick)
 	{
+		if (!panel.isLoggedIn && client.getLocalPlayer() != null) {
+			panel.updateLoggedIn();
+		}
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();
 
 	}
 
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			log.info("Resetting Embargo Side Panel");
+			panel.isLoggedIn = false;
+			panel.logOut();
+		}
+	}
+
 	public void checkProfileChange()
 	{
+		if (client.getLocalPlayer() != null) {
+
+		}
+
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
 		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
 		{

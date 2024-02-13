@@ -1,169 +1,225 @@
 package gg.embargo;
 
-import gg.embargo.EmbargoConfig;
+import lombok.Setter;
+import net.runelite.api.Client;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.SwingUtil;
+import net.runelite.client.util.LinkBrowser;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.swing.*;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
 import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.Objects;
 
 public class EmbargoPanel extends PluginPanel {
-    private static final ImageIcon DISCORD_ICON;
-    private static final ImageIcon DISCORD_HOVER;
-    private static final ImageIcon GITHUB_ICON;
-    private static final ImageIcon GITHUB_HOVER;
+    @Inject
+    @Nullable
+    private Client client;
+    @Inject
+    private EventBus eventBus;
 
-    private final JPanel titlePanel;
+    @Setter
+    public boolean isLoggedIn = false;
 
-    private final JPanel introductionPanel;
-    private final JPanel supportButtons;
-    final JPanel fetchedInfoPanel;
+    private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
+    private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
+    static ImageIcon DISCORD_HOVER;
+    static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
+    static ImageIcon GITHUB_HOVER;
+    private final JRichTextPane emailLabel = new JRichTextPane();
+    private JPanel actionsContainer;
+    private final JLabel loggedLabel = new JLabel();
+    private JLabel embargoScoreLabel = new JLabel();
+    private JLabel currentRankLabel = new JLabel();
+
+
+    @Inject
+    private EmbargoPanel() {
+
+    }
 
     private final PluginErrorPanel errorPanel = new PluginErrorPanel();
     private final PluginErrorPanel futureFunctionalityPanel = new PluginErrorPanel();
-
     private final JLabel introductionLabel = new JLabel("Welcome to Embargo");
 
-    private final JPanel sidePanel;
-
-    @Inject
-    EmbargoPanel(EmbargoPlugin plugin, EmbargoConfig config) {
-        this.supportButtons = new JPanel();
-        this.sidePanel = new JPanel();
-        this.titlePanel = new JPanel();
-        this.fetchedInfoPanel = new JPanel();
-        this.introductionPanel = new JPanel();
+    private String htmlLabel(String key, String value)
+    {
+        return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value + "</span></body></html>";
     }
 
-    public void sidePanelInitializer() {
-        this.setLayout(new BorderLayout());
-        this.setBorder(new EmptyBorder(10, 10, 10, 10));
-        this.sidePanel.setLayout(new BoxLayout(this.sidePanel, BoxLayout.Y_AXIS));
-        this.sidePanel.add(this.buildTitlePanel());
-        this.sidePanel.add(this.buildIntroductionPanel());
+    void init()
+    {
+        setLayout(new BorderLayout());
+        setBackground(ColorScheme.DARK_GRAY_COLOR);
+        setBorder(new EmptyBorder(10, 10, 10, 10));
 
+        JPanel versionPanel = new JPanel();
+        versionPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        versionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        versionPanel.setLayout(new GridLayout(0, 1));
 
-        // 5px tall Spacer
-        this.sidePanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        final Font smallFont = FontManager.getRunescapeSmallFont();
 
-        // Discord + Github button at the bottom of the panel
-        this.sidePanel.add(this.buildSupportbuttons());
+//        JLabel isRegisteredWithClan = new JLabel(htmlLabel("Account registered:", " No"));
+//        isRegisteredWithClan.setFont(smallFont);
+//        JLabel embargoScore = new JLabel(htmlLabel("Embargo Score:", " 0"));
+//        isRegisteredWithClan.setFont(smallFont);
+//        JLabel currentRank = new JLabel(htmlLabel("Embargo Rank:", " Bronze"));
+//        isRegisteredWithClan.setFont(smallFont);
 
-        // Ensure to build all the panels on the initial load, do not build them every time I add or remove.
-        buildFetchedInfoPanel();
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.0"));
+        version.setFont(smallFont);
+//        currentRank.setFont(smallFont);
+//        embargoScore.setFont(smallFont);
 
-        this.add(sidePanel, "North");
+        JLabel revision = new JLabel();
+        revision.setFont(smallFont);
+
+        loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        loggedLabel.setFont(smallFont);
+
+        loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        loggedLabel.setFont(smallFont);
+
+        emailLabel.setForeground(Color.WHITE);
+        emailLabel.setFont(smallFont);
+
+        versionPanel.add(version);
+//        versionPanel.add(embargoScore);
+//        versionPanel.add(currentRank);
+        versionPanel.add(Box.createGlue());
+        versionPanel.add(loggedLabel);
+        versionPanel.add(emailLabel);
+
+        actionsContainer = new JPanel();
+        actionsContainer.setBorder(new EmptyBorder(10, 0, 0, 0));
+        actionsContainer.setLayout(new GridLayout(0, 1, 0, 10));
+
+        actionsContainer.add(buildLinkPanel(DISCORD_ICON, "Join us on our", "Discord", "https://embargo.gg/discord"));
+        actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Go to our", "clan website", "https://embargo.gg/"));
+        actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Report a bug or", "inspect the plugin code", "https://github.com/Sharpienero/Embargo-Plugin"));
+
+        this.add(versionPanel, BorderLayout.NORTH);
+        this.add(actionsContainer, BorderLayout.CENTER);
+
+        updateLoggedIn();
     }
 
-    private JPanel buildFetchedInfoPanel() {
-        fetchedInfoPanel.setLayout(new BorderLayout());
-        fetchedInfoPanel.setBorder(new EmptyBorder(0, 0, 0, 10));
+    public void updateLoggedIn() {
+        if (!isLoggedIn) {
+            if (client != null && client.getLocalPlayer() != null) {
+                emailLabel.setContentType("text/plain");
+                emailLabel.setText(client.getLocalPlayer().getName());
+                loggedLabel.setText("Signed in as");
 
-        JPanel fetchedInfoSection = new JPanel();
-        fetchedInfoSection.setLayout(new GridLayout(9, 0, 0, 10));
-        fetchedInfoSection.setBorder(new EmptyBorder(15, 5, 3, 0));
+                //TODO: add logic here to check if they are registered with
+                // the clan. also add logic here to display if they are ironman
+//                if (Objects.equals(client.getLocalPlayer().getName(), "Mewst")) {
+//                    this.embargoScoreLabel = new JLabel(htmlLabel("Account registered:", " Yes"));
+//                    this.currentRankLabel = new JLabel(htmlLabel("Embargo Rank:", " Dragon"));
+//                }
 
-        fetchedInfoPanel.setBorder(new MatteBorder(0, 0, 1, 0, new Color(37, 125, 141)));
-        fetchedInfoPanel.add(fetchedInfoSection, "West");
-
-        return fetchedInfoPanel;
-    }
-
-    static {
-        BufferedImage discordPNG = ImageUtil.loadImageResource(EmbargoPlugin.class, "/discord_icon.png");
-        BufferedImage githubPNG = ImageUtil.loadImageResource(EmbargoPlugin.class, "/github_icon.png");
-        DISCORD_ICON = new ImageIcon(discordPNG);
-        DISCORD_HOVER = new ImageIcon(ImageUtil.luminanceOffset(discordPNG, -80));
-
-        GITHUB_ICON = new ImageIcon(githubPNG);
-        GITHUB_HOVER = new ImageIcon(ImageUtil.luminanceOffset(githubPNG, -80));
-    }
-
-    private JPanel buildIntroductionPanel() {
-        introductionPanel.setLayout(new BorderLayout());
-        introductionPanel.setBorder(new EmptyBorder(2, 0, 3, 0));
-
-        JPanel introductionSection = new JPanel(new CardLayout());
-        introductionSection.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        introductionSection.setOpaque(false);
-
-        introductionSection.add(introductionLabel);
-        errorPanel.setContent("Current Functionality", "Detects and uploads your Quest Points, Achievement Diaries, Combat Achievement, Untrackable Items, and your skill levels.");
-        futureFunctionalityPanel.setContent("Future Functionality", "Display your clan rank, account score, community score, what you are missing for a rank up, and much more!");
-        introductionPanel.add(errorPanel, "North");
-        introductionPanel.add(futureFunctionalityPanel, "South");
-
-        return introductionPanel;
-    }
-
-    private JPanel buildTitlePanel() {
-        titlePanel.setBorder(new CompoundBorder(new EmptyBorder(5, 0, 0, 0), new MatteBorder(0, 0, 1, 0, new Color(37, 125, 141))));
-        titlePanel.setLayout(new BorderLayout());
-        PluginErrorPanel errorPanel = new PluginErrorPanel();
-        errorPanel.setBorder(new EmptyBorder(2, 0, 1, 0));
-        errorPanel.setContent("Embargo Clan Plugin", "");
-        titlePanel.add(errorPanel, "Center");
-        return titlePanel;
-    }
-
-    private JPanel buildSupportbuttons() {
-        supportButtons.setLayout(new BorderLayout());
-        supportButtons.setBorder(new EmptyBorder(4, 5, 0, 10));
-
-        JPanel myButtons = new JPanel(new GridBagLayout());
-        myButtons.setLayout(new GridLayout(1, 2, 8, 0));
-        myButtons.setBorder(new EmptyBorder(10, 5, 0, 0));
-
-        JButton discordButton = new JButton(DISCORD_ICON);
-        JButton githubButton = new JButton(GITHUB_ICON);
-
-        discordButton.setRolloverIcon(DISCORD_HOVER);
-        githubButton.setRolloverIcon(GITHUB_HOVER);
-
-        discordButton.setPreferredSize(new Dimension(23, 25));
-        githubButton.setPreferredSize(new Dimension(20, 23));
-
-        SwingUtil.removeButtonDecorations(githubButton);
-        SwingUtil.removeButtonDecorations(discordButton);
-
-        githubButton.addActionListener(e -> githubLink());
-        discordButton.addActionListener(e -> discordLink());
-
-        myButtons.add(githubButton);
-        myButtons.add(discordButton);
-
-        supportButtons.add(myButtons, "East");
-
-        return supportButtons;
-    }
-
-    public void discordLink() {
-        try {
-            Desktop.getDesktop().browse(new URI("https://embargo.gg/discord"));
-        } catch (IOException | URISyntaxException e1) {
-            // Implement a more efficient error handling strategy here
-            e1.printStackTrace();
+                this.isLoggedIn = true;
+            }
         }
     }
 
-    public void githubLink() {
-        try {
-            Desktop.getDesktop().browse(new URI("https://github.com/Sharpienero/Embargo-Plugin"));
-        } catch (IOException | URISyntaxException e1) {
-            // Implement a more efficient error handling strategy here
-            e1.printStackTrace();
-        }
+    public void logOut() {
+        this.isLoggedIn = false;
+        emailLabel.setContentType("text/html");
+        emailLabel.setText("Sign in to send data to Embargo.");
+        loggedLabel.setText("Not signed in");
+    }
+
+    void deinit()
+    {
+        eventBus.unregister(this);
+        this.updateLoggedIn();
+    }
+
+    /**
+     * Builds a link panel with a given icon, text and url to redirect to.
+     */
+    private static JPanel buildLinkPanel(ImageIcon icon, String topText, String bottomText, String url)
+    {
+        return buildLinkPanel(icon, topText, bottomText, () -> LinkBrowser.browse(url));
+    }
+
+    /**
+     * Builds a link panel with a given icon, text and callable to call.
+     */
+    private static JPanel buildLinkPanel(ImageIcon icon, String topText, String bottomText, Runnable callback) {
+        JPanel container = new JPanel();
+        container.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        container.setLayout(new BorderLayout());
+        container.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        final Color hoverColor = ColorScheme.DARKER_GRAY_HOVER_COLOR;
+        final Color pressedColor = ColorScheme.DARKER_GRAY_COLOR.brighter();
+
+        JLabel iconLabel = new JLabel(icon);
+        container.add(iconLabel, BorderLayout.WEST);
+
+        JPanel textContainer = new JPanel();
+        textContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        textContainer.setLayout(new GridLayout(2, 1));
+        textContainer.setBorder(new EmptyBorder(5, 10, 5, 10));
+
+        container.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent mouseEvent) {
+                container.setBackground(pressedColor);
+                textContainer.setBackground(pressedColor);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                callback.run();
+                container.setBackground(hoverColor);
+                textContainer.setBackground(hoverColor);
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                container.setBackground(hoverColor);
+                textContainer.setBackground(hoverColor);
+                container.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                container.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                textContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                container.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+            }
+        });
+
+        JLabel topLine = new JLabel(topText);
+        topLine.setForeground(Color.WHITE);
+        topLine.setFont(FontManager.getRunescapeSmallFont());
+
+        JLabel bottomLine = new JLabel(bottomText);
+        bottomLine.setForeground(Color.WHITE);
+        bottomLine.setFont(FontManager.getRunescapeSmallFont());
+
+        textContainer.add(topLine);
+        textContainer.add(bottomLine);
+
+        container.add(textContainer, BorderLayout.CENTER);
+
+        JLabel arrowLabel = new JLabel(ARROW_RIGHT_ICON);
+        container.add(arrowLabel, BorderLayout.EAST);
+
+        return container;
     }
 }
