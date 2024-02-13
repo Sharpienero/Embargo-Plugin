@@ -113,6 +113,11 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     public void updateLoggedIn() {
+
+        //TODO - Have potential states.
+        // If not logged in, display 1 panel.
+        // If logged in + registered, display a different panel.
+        // If logged in + not registered, display a third distinct panel.
         if (!isLoggedIn) {
             if (client != null && client.getLocalPlayer() != null) {
                 emailLabel.setContentType("text/plain");

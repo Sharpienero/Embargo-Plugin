@@ -259,26 +259,21 @@ public class DataManager {
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) {
                     if (response.isSuccessful()) {
-                        log.info("response.isSuccessful = True");
                         try {
                             // We want to be able to change the varbs and varps we get on the fly. To do so, we tell
                             // the client what to send the server on startup via the manifest.
                             if (response.body() == null) {
-                                log.info("Response.body() == null");
                                 log.error("Manifest request succeeded but returned empty body");
                                 response.close();
                                 return;
                             }
 
-                            log.info("Response.body() != null");
                             JsonObject j = new Gson().fromJson(response.body().string(), JsonObject.class);
                             log.info(j.toString());
 
                             try {
-                                log.info("Inside of try block");
                                 plugin.setVarbitsToCheck(parseSet(j.getAsJsonArray("varbits")));
                                 plugin.setVarpsToCheck(parseSet(j.getAsJsonArray("varps")));
-                                log.info("After plugin.set");
                                 try {
                                     int manifestVersion = j.get("version").getAsInt();
                                     if (plugin.getLastManifestVersion() != manifestVersion) {
