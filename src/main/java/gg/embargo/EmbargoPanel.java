@@ -13,13 +13,12 @@ import net.runelite.client.util.LinkBrowser;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import javax.inject.Named;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.Objects;
+
 
 public class EmbargoPanel extends PluginPanel {
     @Inject
@@ -33,9 +32,7 @@ public class EmbargoPanel extends PluginPanel {
 
     private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
     private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
-    static ImageIcon DISCORD_HOVER;
     static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
-    static ImageIcon GITHUB_HOVER;
     private final JRichTextPane emailLabel = new JRichTextPane();
     private JPanel actionsContainer;
     private final JLabel loggedLabel = new JLabel();
@@ -130,6 +127,8 @@ public class EmbargoPanel extends PluginPanel {
 //                }
 
                 this.isLoggedIn = true;
+            } else {
+                this.logOut();
             }
         }
     }

@@ -6,34 +6,28 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.Item.*;
+import net.runelite.api.clan.ClanChannel;
+import net.runelite.api.clan.ClanRank;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
+import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.game.ItemClient;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.ItemMapping;
-import net.runelite.client.game.ItemStack;
-import net.runelite.client.party.PartyMember;
 import net.runelite.client.party.PartyService;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.discord.DiscordService;
-import net.runelite.api.clan.*;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Array;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.function.Predicate;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Objects;
 
 @Slf4j
 @PluginDescriptor(
@@ -57,12 +51,6 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private Client client;
-
-	@Inject
-	private EmbargoConfig config;
-
-	@Inject
-	private PartyService partyService;
 
 	@Getter
 	@Setter
@@ -110,7 +98,7 @@ public class EmbargoPlugin extends Plugin {
 	protected void startUp() {
 		log.info("Embargo Clan plugin started!");
 
-		//Let's build out the sidepanel
+		//Let's build out the sidepanels
 		panel = injector.getInstance(EmbargoPanel.class);
 		panel.init();
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
@@ -118,7 +106,7 @@ public class EmbargoPlugin extends Plugin {
 		navButton = NavigationButton.builder()
 				.tooltip("Embargo Clan")
 				.icon(icon)
-				.priority(100)
+				.priority(0)
 				.panel(panel)
 				.build();
 
@@ -129,6 +117,7 @@ public class EmbargoPlugin extends Plugin {
 		varpsToCheck = null;
 		skillLevelCache.clear();
 		dataManager.getManifest();
+		panel.updateLoggedIn();
 	}
 
 	@Override
