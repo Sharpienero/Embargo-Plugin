@@ -27,6 +27,9 @@ public class EmbargoPanel extends PluginPanel {
     @Inject
     private EventBus eventBus;
 
+    @Inject
+    private DataManager dataManager;
+
     @Setter
     public boolean isLoggedIn = false;
 
@@ -120,16 +123,16 @@ public class EmbargoPanel extends PluginPanel {
         // If logged in + not registered, display a third distinct panel.
         if (!isLoggedIn) {
             if (client != null && client.getLocalPlayer() != null) {
-                emailLabel.setContentType("text/plain");
-                emailLabel.setText(client.getLocalPlayer().getName());
+                var username = client.getLocalPlayer().getName();
                 loggedLabel.setText("Signed in as");
+                emailLabel.setContentType("text/plain");
+                emailLabel.setText(username);
 
-                //TODO: add logic here to check if they are registered with
-                // the clan. also add logic here to display if they are ironman
-//                if (Objects.equals(client.getLocalPlayer().getName(), "Mewst")) {
-//                    this.embargoScoreLabel = new JLabel(htmlLabel("Account registered:", " Yes"));
-//                    this.currentRankLabel = new JLabel(htmlLabel("Embargo Rank:", " Dragon"));
-//                }
+                if (dataManager.checkRegistered(username)) {
+                    //get gear
+                    var test = dataManager.getProfile(username);
+                    System.out.println("Test");
+                }
 
                 this.isLoggedIn = true;
             } else {

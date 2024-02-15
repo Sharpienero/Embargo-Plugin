@@ -31,21 +31,16 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 
-import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
+import okio.BufferedSource;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
@@ -80,7 +75,9 @@ public class DataManager {
          MANIFEST("runelite/manifest"),
          VERSION("version"),
          UNTRACKABLES("untrackables"),
-         REGISTER("register");
+         REGISTER("register"),
+         CHECKREGISTRATION("checkregistration"),
+         GET_PROFILE("getgear");
 
          APIRoutes(String route) {
              this.route = route;
@@ -99,11 +96,78 @@ public class DataManager {
     private static final String VERSION_ENDPOINT = API_URI + APIRoutes.VERSION;
     private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
     private static final String REGISTER_ENDPOINT = API_URI + APIRoutes.REGISTER;
+    private static final String CHECK_REGISTRATION_ENDPOINT = API_URI + APIRoutes.CHECKREGISTRATION;
+    private static final String GET_PROFILE_ENDPOINT = API_URI + APIRoutes.GET_PROFILE;
 
     public void storeVarbitChanged(int varbIndex, int varbValue) {
         synchronized (this) {
             varbData.put(varbIndex, varbValue);
         }
+    }
+
+    public ResponseBody getProfile(String username) {
+        Request request = new Request.Builder()
+                .url(GET_PROFILE_ENDPOINT + '/' + username)
+                .get()
+                .build();
+
+        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
+                .callTimeout(5, TimeUnit.SECONDS)
+                .build();
+
+        try (Response response = shortTimeoutClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                //do something
+                log.info("a");
+            }
+
+            return response.body();
+        } catch (IOException ioException) {
+            log.error("Failed to check if user is registered.");
+        }
+
+        return new ResponseBody() {
+            @Nullable
+            @Override
+            public MediaType contentType() {
+                return null;
+            }
+
+            @Override
+            public long contentLength() {
+                return 0;
+            }
+
+            @Override
+            public BufferedSource source() {
+                return null;
+            }
+        };
+
+    }
+
+    public boolean checkRegistered(String username) {
+        Request request = new Request.Builder()
+                .url(CHECK_REGISTRATION_ENDPOINT + '/' + username)
+                .get()
+                .build();
+
+        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
+                .callTimeout(5, TimeUnit.SECONDS)
+                .build();
+
+        try (Response response = shortTimeoutClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                return true;
+
+            } else {
+                log.error("Failed to check if user is registered.");
+            }
+        } catch (IOException ioException) {
+            log.error("Failed to check if user is registered.");
+        }
+
+        return false;
     }
 
     public void storeVarbitChangedIfNotStored(int varbIndex, int varbValue) {
