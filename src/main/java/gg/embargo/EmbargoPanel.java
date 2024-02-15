@@ -49,6 +49,8 @@ public class EmbargoPanel extends PluginPanel {
     private final JLabel communityScoreLabel = new JLabel(htmlLabel("Community Score:", " N/A"));
     private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
     private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
+    private final JLabel currentCALabel = new JLabel(htmlLabel("Current TA Tier:", " N/A"));
+
 
 
     @Inject
@@ -84,6 +86,7 @@ public class EmbargoPanel extends PluginPanel {
         JLabel revision = new JLabel();
         revision.setFont(smallFont);
 
+        //Set up custom embargo labels
         isRegisteredWithClanLabel.setFont(smallFont);
         isRegisteredWithClanLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 
@@ -95,6 +98,9 @@ public class EmbargoPanel extends PluginPanel {
 
         communityScoreLabel.setFont(smallFont);
         communityScoreLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        currentCALabel.setFont(smallFont);
+        currentCALabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 
         loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         loggedLabel.setFont(smallFont);
@@ -111,6 +117,7 @@ public class EmbargoPanel extends PluginPanel {
         versionPanel.add(embargoScoreLabel);
         versionPanel.add(accountScoreLabel);
         versionPanel.add(communityScoreLabel);
+        versionPanel.add(currentCALabel);
 
         actionsContainer = new JPanel();
         actionsContainer.setBorder(new EmptyBorder(10, 0, 0, 0));
@@ -147,6 +154,8 @@ public class EmbargoPanel extends PluginPanel {
                     versionPanel.add(embargoScoreLabel);
                     versionPanel.add(accountScoreLabel);
                     versionPanel.add(communityScoreLabel);
+                    versionPanel.add(currentRankLabel);
+                    versionPanel.add(currentCALabel);
 
                     isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
 
@@ -159,15 +168,16 @@ public class EmbargoPanel extends PluginPanel {
                     JsonObject currentHighestCombatAchievementTier = test.getAsJsonObject("currentHighestCombatAchievementTier");
                     JsonElement getCurrentCAName = test.get("currentHighestCAName");
                     accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
-                    communityScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
+                    communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
                     JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
                     JsonArray missingGearReqs = test.getAsJsonArray("missingGearRequirements");
                     JsonObject nextRank = test.getAsJsonObject("nextRank");
-
                     JsonObject currentRank = test.getAsJsonObject("currentRank");
-                    currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRank));
                     JsonElement currentRankName = currentRank.get("name");
+                    currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankName));
                     JsonElement nextRankName = nextRank.get("name");
+
+                    currentCALabel.setText(htmlLabel("Current CA Tier:", String.valueOf(getCurrentCAName)));
 
                     log.info(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
                     log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
@@ -200,6 +210,8 @@ public class EmbargoPanel extends PluginPanel {
         versionPanel.remove(embargoScoreLabel);
         versionPanel.remove(accountScoreLabel);
         versionPanel.remove(communityScoreLabel);
+        versionPanel.remove(currentRankLabel);
+        versionPanel.remove(currentCALabel);
 
     }
 
