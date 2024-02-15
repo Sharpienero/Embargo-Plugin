@@ -91,7 +91,8 @@ public class DataManager {
          }
      }
 
-    private static final String API_URI = "https://embargo.gg/api/";
+    //private static final String API_URI = "https://embargo.gg/api/";
+    private static final String API_URI = "http://localhost:3000/api/";
     private static final String MANIFEST_ENDPOINT = API_URI + APIRoutes.MANIFEST;
     private static final String VERSION_ENDPOINT = API_URI + APIRoutes.VERSION;
     private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
@@ -105,7 +106,7 @@ public class DataManager {
         }
     }
 
-    public ResponseBody getProfile(String username) {
+    public String getProfile(String username) {
         Request request = new Request.Builder()
                 .url(GET_PROFILE_ENDPOINT + '/' + username)
                 .get()
@@ -117,32 +118,14 @@ public class DataManager {
 
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                //do something
-                log.info("a");
+                return gson.toJson(response.body().string());
             }
 
-            return response.body();
+            return "";
         } catch (IOException ioException) {
             log.error("Failed to check if user is registered.");
         }
-
-        return new ResponseBody() {
-            @Nullable
-            @Override
-            public MediaType contentType() {
-                return null;
-            }
-
-            @Override
-            public long contentLength() {
-                return 0;
-            }
-
-            @Override
-            public BufferedSource source() {
-                return null;
-            }
-        };
+        return "";
 
     }
 

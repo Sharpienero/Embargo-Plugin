@@ -1,5 +1,7 @@
 package gg.embargo;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.client.eventbus.EventBus;
@@ -10,6 +12,7 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
+import com.google.gson.Gson;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -18,7 +21,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-
 
 public class EmbargoPanel extends PluginPanel {
     @Inject
@@ -131,7 +133,9 @@ public class EmbargoPanel extends PluginPanel {
                 if (dataManager.checkRegistered(username)) {
                     //get gear
                     var test = dataManager.getProfile(username);
-                    System.out.println("Test");
+
+                    JsonObject jsonObject = new Gson().fromJson(test, JsonObject.class);
+                    System.out.println(jsonObject);
                 }
 
                 this.isLoggedIn = true;
