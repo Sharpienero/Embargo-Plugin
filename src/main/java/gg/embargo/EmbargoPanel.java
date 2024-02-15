@@ -134,6 +134,8 @@ public class EmbargoPanel extends PluginPanel {
                 if (dataManager.checkRegistered(username)) {
                     //get gear
                     var test = dataManager.getProfile(username);
+                    JsonElement currentAccountPoints = test.getAsJsonPrimitive("accountPoints");
+                    JsonElement currentCommunityPoints = test.getAsJsonPrimitive("communityPoints");
                     JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
                     JsonArray missingGearReqs = test.getAsJsonArray("missingGearRequirements");
                     JsonObject nextRank = test.getAsJsonObject("nextRank");
@@ -141,7 +143,8 @@ public class EmbargoPanel extends PluginPanel {
                     JsonElement currentRankName = currentRank.get("name");
                     JsonElement nextRankName = nextRank.get("name");
 
-                    log.info("User is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString() + "\nThey are missing the following other reqs:\n");
+                    log.info(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
+                    log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString() + "\nThey are missing the following other reqs:\n");
                 }
                 this.isLoggedIn = true;
             } else {
