@@ -1,10 +1,11 @@
 package gg.embargo;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.party.PartyService;
 import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -12,7 +13,6 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
-import com.google.gson.Gson;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -22,6 +22,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+@Slf4j
 public class EmbargoPanel extends PluginPanel {
     @Inject
     @Nullable
@@ -133,11 +134,15 @@ public class EmbargoPanel extends PluginPanel {
                 if (dataManager.checkRegistered(username)) {
                     //get gear
                     var test = dataManager.getProfile(username);
+                    JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
+                    JsonArray missingGearReqs = test.getAsJsonArray("missingGearRequirements");
+                    JsonObject nextRank = test.getAsJsonObject("nextRank");
+                    JsonObject currentRank = test.getAsJsonObject("currentRank");
+                    JsonElement currentRankName = currentRank.get("name");
+                    JsonElement nextRankName = nextRank.get("name");
 
-                    JsonObject jsonObject = new Gson().fromJson(test, JsonObject.class);
-                    System.out.println(jsonObject);
+                    log.info("User is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString() + "\nThey are missing the following other reqs:\n");
                 }
-
                 this.isLoggedIn = true;
             } else {
                 this.logOut();

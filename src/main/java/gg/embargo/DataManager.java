@@ -106,7 +106,7 @@ public class DataManager {
         }
     }
 
-    public String getProfile(String username) {
+    public JsonObject getProfile(String username) {
         Request request = new Request.Builder()
                 .url(GET_PROFILE_ENDPOINT + '/' + username)
                 .get()
@@ -118,15 +118,23 @@ public class DataManager {
 
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                return gson.toJson(response.body().string());
+
+                //return gson.toJson(response.body().string());
+                //Convert response.body().string() to an object
+                BufferedSource source = response.body().source();
+                String json = source.readUtf8();
+                
+                //create new object to decode json
+                JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
+                //return the decoded json
+                return jsonObject;
             }
 
-            return "";
+            return new JsonObject();
         } catch (IOException ioException) {
             log.error("Failed to check if user is registered.");
         }
-        return "";
-
+        return new JsonObject();
     }
 
     public boolean checkRegistered(String username) {
