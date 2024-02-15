@@ -149,10 +149,12 @@ public class DataManager {
 
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
+                response.close();
                 return true;
 
             } else {
                 log.error("Failed to check if user is registered.");
+                response.close();
             }
         } catch (IOException ioException) {
             log.error("Failed to check if user is registered.");
