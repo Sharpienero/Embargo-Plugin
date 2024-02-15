@@ -105,6 +105,9 @@ public class EmbargoPanel extends PluginPanel {
         loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         loggedLabel.setFont(smallFont);
 
+        currentRankLabel.setFont(smallFont);
+        currentRankLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
 
         emailLabel.setForeground(Color.WHITE);
         emailLabel.setFont(smallFont);
@@ -174,10 +177,16 @@ public class EmbargoPanel extends PluginPanel {
                     JsonObject nextRank = test.getAsJsonObject("nextRank");
                     JsonObject currentRank = test.getAsJsonObject("currentRank");
                     JsonElement currentRankName = currentRank.get("name");
-                    currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankName));
+
+                    var currentRankDisplay = String.valueOf(currentRankName).replace("\"", "");
+                    currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankDisplay));
+
+                    var displayCAName = String.valueOf(getCurrentCAName).replace("\"", "");
+                    displayCAName = displayCAName.replace(" Combat Achievement", "");
+
                     JsonElement nextRankName = nextRank.get("name");
 
-                    currentCALabel.setText(htmlLabel("Current CA Tier:", String.valueOf(getCurrentCAName)));
+                    currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
                     log.info(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
                     log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
