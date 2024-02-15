@@ -36,14 +36,19 @@ public class EmbargoPanel extends PluginPanel {
     @Setter
     public boolean isLoggedIn = false;
 
+    JPanel versionPanel = new JPanel();
+
     private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
     private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
     static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
     private final JRichTextPane emailLabel = new JRichTextPane();
     private JPanel actionsContainer;
     private final JLabel loggedLabel = new JLabel();
-    private JLabel embargoScoreLabel = new JLabel();
-    private JLabel currentRankLabel = new JLabel();
+    private final JLabel embargoScoreLabel = new JLabel(htmlLabel("Embargo Score:", " N/A"));
+    private final JLabel accountScoreLabel = new JLabel(htmlLabel("Account Score:", " N/A"));
+    private final JLabel communityScoreLabel = new JLabel(htmlLabel("Community Score:", " N/A"));
+    private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
+    private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
 
 
     @Inject
@@ -66,43 +71,46 @@ public class EmbargoPanel extends PluginPanel {
         setBackground(ColorScheme.DARK_GRAY_COLOR);
         setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JPanel versionPanel = new JPanel();
+
         versionPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         versionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         versionPanel.setLayout(new GridLayout(0, 1));
 
         final Font smallFont = FontManager.getRunescapeSmallFont();
 
-//        JLabel isRegisteredWithClan = new JLabel(htmlLabel("Account registered:", " No"));
-//        isRegisteredWithClan.setFont(smallFont);
-//        JLabel embargoScore = new JLabel(htmlLabel("Embargo Score:", " 0"));
-//        isRegisteredWithClan.setFont(smallFont);
-//        JLabel currentRank = new JLabel(htmlLabel("Embargo Rank:", " Bronze"));
-//        isRegisteredWithClan.setFont(smallFont);
-
         JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.0"));
         version.setFont(smallFont);
-//        currentRank.setFont(smallFont);
-//        embargoScore.setFont(smallFont);
 
         JLabel revision = new JLabel();
         revision.setFont(smallFont);
 
-        loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        loggedLabel.setFont(smallFont);
+        isRegisteredWithClanLabel.setFont(smallFont);
+        isRegisteredWithClanLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        embargoScoreLabel.setFont(smallFont);
+        embargoScoreLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        accountScoreLabel.setFont(smallFont);
+        accountScoreLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        communityScoreLabel.setFont(smallFont);
+        communityScoreLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 
         loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         loggedLabel.setFont(smallFont);
+
 
         emailLabel.setForeground(Color.WHITE);
         emailLabel.setFont(smallFont);
 
         versionPanel.add(version);
-//        versionPanel.add(embargoScore);
-//        versionPanel.add(currentRank);
         versionPanel.add(Box.createGlue());
         versionPanel.add(loggedLabel);
         versionPanel.add(emailLabel);
+        versionPanel.add(isRegisteredWithClanLabel);
+        versionPanel.add(embargoScoreLabel);
+        versionPanel.add(accountScoreLabel);
+        versionPanel.add(communityScoreLabel);
 
         actionsContainer = new JPanel();
         actionsContainer.setBorder(new EmptyBorder(10, 0, 0, 0));
@@ -131,23 +139,41 @@ public class EmbargoPanel extends PluginPanel {
                 emailLabel.setContentType("text/plain");
                 emailLabel.setText(username);
 
-                if (dataManager.checkRegistered(username)) {
+                boolean isRegisteredWithClan = dataManager.checkRegistered(username);
+
+                if (isRegisteredWithClan) {
+                    //re-register labels with panel
+                    versionPanel.add(isRegisteredWithClanLabel);
+                    versionPanel.add(embargoScoreLabel);
+                    versionPanel.add(accountScoreLabel);
+                    versionPanel.add(communityScoreLabel);
+
+                    isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
+
                     //get gear
                     var test = dataManager.getProfile(username);
-                    JsonElement currentAccountPoints = test.getAsJsonPrimitive("accountPoints");
+                    JsonElement currentAccountPoints = test.get("accountPoints");
+
                     JsonElement currentCommunityPoints = test.getAsJsonPrimitive("communityPoints");
+                    embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints)) + Integer.parseInt(String.valueOf(currentCommunityPoints))))));
                     JsonObject currentHighestCombatAchievementTier = test.getAsJsonObject("currentHighestCombatAchievementTier");
                     JsonElement getCurrentCAName = test.get("currentHighestCAName");
+                    accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
+                    communityScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
                     JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
                     JsonArray missingGearReqs = test.getAsJsonArray("missingGearRequirements");
                     JsonObject nextRank = test.getAsJsonObject("nextRank");
+
                     JsonObject currentRank = test.getAsJsonObject("currentRank");
+                    currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRank));
                     JsonElement currentRankName = currentRank.get("name");
                     JsonElement nextRankName = nextRank.get("name");
 
                     log.info(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
                     log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
                     log.info(username + " currently has " + getCurrentCAName);
+                } else {
+                    //TODO - Add panel for people who sign in but aren't registered with the clan
                 }
                 this.isLoggedIn = true;
             } else {
@@ -161,6 +187,20 @@ public class EmbargoPanel extends PluginPanel {
         emailLabel.setContentType("text/html");
         emailLabel.setText("Sign in to send data to Embargo.");
         loggedLabel.setText("Not signed in");
+
+        //Set to NA
+        isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " No"));
+        embargoScoreLabel.setText(htmlLabel("Embargo Score:", " N/A"));
+        currentRankLabel.setText(htmlLabel("Current Rank:", " N/A"));
+        accountScoreLabel.setText(htmlLabel("Account Score:", " N/A"));
+        communityScoreLabel.setText(htmlLabel("Community Score:", " N/A"));
+
+        //Unregister from the component
+        versionPanel.remove(isRegisteredWithClanLabel);
+        versionPanel.remove(embargoScoreLabel);
+        versionPanel.remove(accountScoreLabel);
+        versionPanel.remove(communityScoreLabel);
+
     }
 
     void deinit()
