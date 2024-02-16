@@ -118,16 +118,10 @@ public class DataManager {
 
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-
-                //return gson.toJson(response.body().string());
-                //Convert response.body().string() to an object
                 BufferedSource source = response.body().source();
                 String json = source.readUtf8();
                 
-                //create new object to decode json
-                JsonObject jsonObject = gson.fromJson(json, JsonObject.class);
-                //return the decoded json
-                return jsonObject;
+                return gson.fromJson(json, JsonObject.class);
             }
 
             return new JsonObject();
