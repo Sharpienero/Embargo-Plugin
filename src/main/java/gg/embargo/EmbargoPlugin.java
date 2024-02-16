@@ -78,7 +78,7 @@ public class EmbargoPlugin extends Plugin {
 	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
-	private final int SECONDS_BETWEEN_REGISTRATION_CHECKS = 5*60;
+	private final int SECONDS_BETWEEN_PROFILE_UPDATE = 10;
 	private final int VARBITS_ARCHIVE_ID = 14;
 
 	public static final String CONFIG_GROUP_KEY = "Embargo";
@@ -114,7 +114,7 @@ public class EmbargoPlugin extends Plugin {
 		varpsToCheck = null;
 		skillLevelCache.clear();
 		dataManager.getManifest();
-		panel.updateLoggedIn();
+		panel.updateLoggedIn(false);
 	}
 
 	@Override
@@ -153,11 +153,26 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
+	@Schedule(
+			period = SECONDS_BETWEEN_PROFILE_UPDATE,
+			unit = ChronoUnit.SECONDS,
+			asynchronous = true
+	)
+	private void updateProfileAfterLoggedIn()
+	{
+		if (!panel.isLoggedIn && client.getLocalPlayer() != null) {
+			if (dataManager.checkRegistered(client.getLocalPlayer().getName())) {
+				panel.updateLoggedIn(true);
+			}
+		}
+
+	}
+
 	@Subscribe
 	public void onGameTick(GameTick gameTick)
 	{
 		if (!panel.isLoggedIn && client.getLocalPlayer() != null) {
-			panel.updateLoggedIn();
+			panel.updateLoggedIn(false);
 		}
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();

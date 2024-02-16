@@ -128,16 +128,16 @@ public class EmbargoPanel extends PluginPanel {
         this.add(versionPanel, BorderLayout.NORTH);
         this.add(actionsContainer, BorderLayout.CENTER);
 
-        updateLoggedIn();
+        updateLoggedIn(false);
     }
 
-    public void updateLoggedIn() {
+    public void updateLoggedIn(Boolean scheduled) {
 
         //TODO - Have potential states.
         // If not logged in, display 1 panel.
         // If logged in + registered, display a different panel.
         // If logged in + not registered, display a third distinct panel.
-        if (!isLoggedIn) {
+        if (!isLoggedIn || scheduled) {
             if (client != null && client.getLocalPlayer() != null) {
                 var username = client.getLocalPlayer().getName();
                 loggedLabel.setText(htmlLabel("Signed in as", " " + username));
@@ -233,7 +233,7 @@ public class EmbargoPanel extends PluginPanel {
     void reset()
     {
         eventBus.unregister(this);
-        this.updateLoggedIn();
+        this.updateLoggedIn(false);
     }
 
     /**
