@@ -1,16 +1,16 @@
 package gg.embargo;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.party.PartyService;
 import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
-import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 
@@ -42,7 +42,6 @@ public class EmbargoPanel extends PluginPanel {
     private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
     static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
     private final JRichTextPane emailLabel = new JRichTextPane();
-    private JPanel actionsContainer;
     private final JLabel loggedLabel = new JLabel();
     private final JLabel embargoScoreLabel = new JLabel(htmlLabel("Embargo Score:", " N/A"));
     private final JLabel accountScoreLabel = new JLabel(htmlLabel("Account Score:", " N/A"));
@@ -57,10 +56,6 @@ public class EmbargoPanel extends PluginPanel {
     private EmbargoPanel() {
 
     }
-
-    private final PluginErrorPanel errorPanel = new PluginErrorPanel();
-    private final PluginErrorPanel futureFunctionalityPanel = new PluginErrorPanel();
-    private final JLabel introductionLabel = new JLabel("Welcome to Embargo");
 
     private String htmlLabel(String key, String value)
     {
@@ -122,7 +117,7 @@ public class EmbargoPanel extends PluginPanel {
         versionPanel.add(communityScoreLabel);
         versionPanel.add(currentCALabel);
 
-        actionsContainer = new JPanel();
+        JPanel actionsContainer = new JPanel();
         actionsContainer.setBorder(new EmptyBorder(10, 0, 0, 0));
         actionsContainer.setLayout(new GridLayout(0, 1, 0, 10));
 
@@ -145,13 +140,14 @@ public class EmbargoPanel extends PluginPanel {
         if (!isLoggedIn) {
             if (client != null && client.getLocalPlayer() != null) {
                 var username = client.getLocalPlayer().getName();
-                loggedLabel.setText("Signed in as");
-                emailLabel.setContentType("text/plain");
-                emailLabel.setText(username);
+                loggedLabel.setText(htmlLabel("Signed in as", " " + username));
 
                 boolean isRegisteredWithClan = dataManager.checkRegistered(username);
 
                 if (isRegisteredWithClan) {
+                    //remove "Sign in to send..."
+                    versionPanel.remove(emailLabel);
+
                     //re-register labels with panel
                     versionPanel.add(isRegisteredWithClanLabel);
                     versionPanel.add(embargoScoreLabel);
@@ -192,7 +188,9 @@ public class EmbargoPanel extends PluginPanel {
                     log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
                     log.info(username + " currently has " + getCurrentCAName);
                 } else {
+                    assert true;
                     //TODO - Add panel for people who sign in but aren't registered with the clan
+                    // Possibly something to briefly explain the clan
                 }
                 this.isLoggedIn = true;
             } else {
@@ -213,6 +211,9 @@ public class EmbargoPanel extends PluginPanel {
         currentRankLabel.setText(htmlLabel("Current Rank:", " N/A"));
         accountScoreLabel.setText(htmlLabel("Account Score:", " N/A"));
         communityScoreLabel.setText(htmlLabel("Community Score:", " N/A"));
+
+        //Add back email label
+        versionPanel.add(emailLabel);
 
         //Unregister from the component
         versionPanel.remove(isRegisteredWithClanLabel);
