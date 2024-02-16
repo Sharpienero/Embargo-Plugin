@@ -131,7 +131,7 @@ public class EmbargoPanel extends PluginPanel {
         updateLoggedIn(false);
     }
 
-    public void updateLoggedIn(Boolean scheduled) {
+    public void updateLoggedIn(boolean scheduled) {
 
         //TODO - Have potential states.
         // If not logged in, display 1 panel.

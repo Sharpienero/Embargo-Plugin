@@ -135,8 +135,16 @@ public class EmbargoPlugin extends Plugin {
 	)
 	public void submitToAPI()
 	{
-		if (client != null && client.getGameState() != GameState.HOPPING)
+		if (client != null && client.getGameState() != GameState.HOPPING) {
 			dataManager.submitToAPI();
+			if (client.getLocalPlayer() != null) {
+				String username = client.getLocalPlayer().getName();
+				if (dataManager.checkRegistered(username)) {
+					log.info("updateProfileAfterLoggedIn Member registered");
+					panel.updateLoggedIn(true);
+				}
+			}
+		}
 	}
 
 	@Schedule(
@@ -151,21 +159,6 @@ public class EmbargoPlugin extends Plugin {
 		{
 			dataManager.getManifest();
 		}
-	}
-
-	@Schedule(
-			period = SECONDS_BETWEEN_PROFILE_UPDATE,
-			unit = ChronoUnit.SECONDS,
-			asynchronous = true
-	)
-	private void updateProfileAfterLoggedIn()
-	{
-		if (!panel.isLoggedIn && client.getLocalPlayer() != null) {
-			if (dataManager.checkRegistered(client.getLocalPlayer().getName())) {
-				panel.updateLoggedIn(true);
-			}
-		}
-
 	}
 
 	@Subscribe
