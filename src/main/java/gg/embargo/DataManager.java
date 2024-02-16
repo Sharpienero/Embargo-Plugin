@@ -68,7 +68,6 @@ public class DataManager {
      enum APIRoutes {
          MANIFEST("runelite/manifest"),
          UNTRACKABLES("untrackables"),
-         REGISTER("register"),
          CHECKREGISTRATION("checkregistration"),
          GET_PROFILE("getgear");
 
@@ -88,7 +87,6 @@ public class DataManager {
     private static final String API_URI = "http://localhost:3000/api/";
     private static final String MANIFEST_ENDPOINT = API_URI + APIRoutes.MANIFEST;
     private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
-    private static final String REGISTER_ENDPOINT = API_URI + APIRoutes.REGISTER;
     private static final String CHECK_REGISTRATION_ENDPOINT = API_URI + APIRoutes.CHECKREGISTRATION;
     private static final String GET_PROFILE_ENDPOINT = API_URI + APIRoutes.GET_PROFILE;
 
@@ -113,9 +111,11 @@ public class DataManager {
                 BufferedSource source = response.body().source();
                 String json = source.readUtf8();
 
+                response.close();
                 return gson.fromJson(json, JsonObject.class);
             }
 
+            response.close();
             return new JsonObject();
         } catch (IOException ioException) {
             log.error("Failed to check if user is registered.");
@@ -412,28 +412,6 @@ public class DataManager {
         } catch (IllegalArgumentException e) {
             log.error("asd");
         }
-        return -1;
-    }
-
-    protected int registerUserWithClan(String discordId, String username) {
-        log.info("Attempting to register user with clan");
-
-        Request request = new Request.Builder()
-                .url(REGISTER_ENDPOINT)
-                .post(RequestBody.create(JSON, "{\"discordId\":\"" + discordId + "\",\"username\":\"" + username + "\"}"))
-                .build();
-        try {
-            Response response = okHttpClient.newCall(request).execute();
-            if (response.isSuccessful()) {
-                //200 success, 409 for already exists
-                return response.code();
-            }
-
-            response.close();
-        } catch (IOException e) {
-            log.error("Failed to register user with clan", e);
-        }
-
         return -1;
     }
 }

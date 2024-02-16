@@ -85,8 +85,6 @@ public class EmbargoPlugin extends Plugin {
 	// THIS VERSION SHOULD BE INCREMENTED EVERY RELEASE WHERE WE ADD A NEW TOGGLE
 	public static final int VERSION = 1;
 
-	private boolean isRegisteredWithEmbargo = false;
-
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager)
 	{
@@ -130,51 +128,6 @@ public class EmbargoPlugin extends Plugin {
 
 		checkProfileChange();
 	}
-
-	private void registerUserWithClan() {
-		log.info("Attempting to register user with clan");
-		if (isRegisteredWithEmbargo) return;
-
-		if (client.getLocalPlayer() == null || client.getClanChannel() == null) {
-			return;
-		}
-
-		var discUser = discordService.getCurrentUser();
-		if (discUser == null) return;
-
-		//Check to make sure they're on STANDARD profile
-		if (RuneScapeProfileType.getCurrent(client) != RuneScapeProfileType.STANDARD) {
-			return;
-		}
-
-		//Get the user's in game name
-		String ign = client.getLocalPlayer().getName();
-		ClanChannel clan = client.getClanChannel();
-		if (!Objects.equals(clan.getName(), "Embargo")) {
-			return;
-		}
-
-		var inClan = clan.findMember(ign);
-		if (inClan == null) return;
-
-		var clanRank = inClan.getRank();
-
-		if (clanRank == ClanRank.GUEST) {
-			return;
-		}
-
-		var discordId = discUser.userId;
-
-		var result = dataManager.registerUserWithClan(discordId, ign);
-		if (result == 200 || result == 409) {
-			isRegisteredWithEmbargo = true;
-		} else {
-			log.error("User registration with clan failed with status code: " + result);
-		}
-
-		log.info("User registration with clan result: " + result);
-	}
-
 	@Schedule(
 			period = SECONDS_BETWEEN_UPLOADS,
 			unit = ChronoUnit.SECONDS,
@@ -200,15 +153,6 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	@Schedule(
-			period = SECONDS_BETWEEN_REGISTRATION_CHECKS,
-			unit = ChronoUnit.SECONDS,
-			asynchronous = true
-	)
-	public void scheduleRegisterUserWithClan() {
-		registerUserWithClan();
-	}
-
 	@Subscribe
 	public void onGameTick(GameTick gameTick)
 	{
@@ -217,7 +161,6 @@ public class EmbargoPlugin extends Plugin {
 		}
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();
-
 	}
 
 	@Subscribe
