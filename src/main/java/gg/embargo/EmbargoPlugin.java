@@ -123,7 +123,7 @@ public class EmbargoPlugin extends Plugin {
 	protected void shutDown() {
 		log.info("Embargo Clan plugin stopped!");
 		dataManager.clearData();
-		panel.deinit();
+		panel.reset();
 		clientToolbar.removeNavigation(navButton);
 		panel = null;
 		navButton = null;

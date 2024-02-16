@@ -164,11 +164,11 @@ public class EmbargoPanel extends PluginPanel {
 
                     JsonElement currentCommunityPoints = test.getAsJsonPrimitive("communityPoints");
                     embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints)) + Integer.parseInt(String.valueOf(currentCommunityPoints))))));
-                    JsonObject currentHighestCombatAchievementTier = test.getAsJsonObject("currentHighestCombatAchievementTier");
+                    //JsonObject currentHighestCombatAchievementTier = test.getAsJsonObject("currentHighestCombatAchievementTier");
                     JsonElement getCurrentCAName = test.get("currentHighestCAName");
                     accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
                     communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
-                    JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
+                    //JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
                     JsonArray missingGearReqs = test.getAsJsonArray("missingGearRequirements");
                     JsonObject nextRank = test.getAsJsonObject("nextRank");
                     JsonObject currentRank = test.getAsJsonObject("currentRank");
@@ -183,6 +183,9 @@ public class EmbargoPanel extends PluginPanel {
                     JsonElement nextRankName = nextRank.get("name");
 
                     currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
+
+                    //TODO - Iterate over missingGearReqs and create a small image to display what the user is missing.
+                    // Can use a few plugins to check this, but the ones that I recommend are Loot Tracker and Bossing Info
 
                     log.info(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
                     log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
@@ -227,7 +230,7 @@ public class EmbargoPanel extends PluginPanel {
 
     }
 
-    void deinit()
+    void reset()
     {
         eventBus.unregister(this);
         this.updateLoggedIn();

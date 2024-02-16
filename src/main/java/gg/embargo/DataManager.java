@@ -25,13 +25,7 @@
  */
 package gg.embargo;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
-
-import java.util.concurrent.TimeUnit;
+import com.google.gson.*;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -40,12 +34,12 @@ import net.runelite.client.config.RuneScapeProfileType;
 import okhttp3.*;
 import okio.BufferedSource;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Singleton
@@ -73,7 +67,6 @@ public class DataManager {
 
      enum APIRoutes {
          MANIFEST("runelite/manifest"),
-         VERSION("version"),
          UNTRACKABLES("untrackables"),
          REGISTER("register"),
          CHECKREGISTRATION("checkregistration"),
@@ -94,7 +87,6 @@ public class DataManager {
     //private static final String API_URI = "https://embargo.gg/api/";
     private static final String API_URI = "http://localhost:3000/api/";
     private static final String MANIFEST_ENDPOINT = API_URI + APIRoutes.MANIFEST;
-    private static final String VERSION_ENDPOINT = API_URI + APIRoutes.VERSION;
     private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
     private static final String REGISTER_ENDPOINT = API_URI + APIRoutes.REGISTER;
     private static final String CHECK_REGISTRATION_ENDPOINT = API_URI + APIRoutes.CHECKREGISTRATION;
@@ -120,7 +112,7 @@ public class DataManager {
             if (response.isSuccessful()) {
                 BufferedSource source = response.body().source();
                 String json = source.readUtf8();
-                
+
                 return gson.fromJson(json, JsonObject.class);
             }
 
