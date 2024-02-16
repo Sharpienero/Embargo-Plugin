@@ -127,6 +127,8 @@ public class EmbargoPlugin extends Plugin {
 		clientToolbar.removeNavigation(navButton);
 		panel = null;
 		navButton = null;
+
+		checkProfileChange();
 	}
 
 	private void registerUserWithClan() {

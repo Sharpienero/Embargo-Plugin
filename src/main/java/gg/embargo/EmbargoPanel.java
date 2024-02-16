@@ -196,6 +196,8 @@ public class EmbargoPanel extends PluginPanel {
             } else {
                 this.logOut();
             }
+        } else {
+            logOut();
         }
     }
 
