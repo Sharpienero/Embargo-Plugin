@@ -135,7 +135,7 @@ public class EmbargoPlugin extends Plugin {
 	)
 	public void submitToAPI()
 	{
-		if (client != null && client.getGameState() != GameState.HOPPING) {
+		if (client != null && (client.getGameState() != GameState.HOPPING && client.getGameState() != GameState.LOGIN_SCREEN)) {
 			dataManager.submitToAPI();
 			if (client.getLocalPlayer() != null) {
 				String username = client.getLocalPlayer().getName();
@@ -144,6 +144,8 @@ public class EmbargoPlugin extends Plugin {
 					panel.updateLoggedIn(true);
 				}
 			}
+		} else {
+			log.info("User is hopping or logged out, do not send data");
 		}
 	}
 

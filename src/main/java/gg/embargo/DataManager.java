@@ -29,6 +29,7 @@ import com.google.gson.*;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import okhttp3.*;
@@ -83,8 +84,7 @@ public class DataManager {
          }
      }
 
-    //private static final String API_URI = "https://embargo.gg/api/";
-    private static final String API_URI = "http://localhost:3000/api/";
+    private static final String API_URI = "https://embargo.gg/api/";
     private static final String MANIFEST_ENDPOINT = API_URI + APIRoutes.MANIFEST;
     private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
     private static final String CHECK_REGISTRATION_ENDPOINT = API_URI + APIRoutes.CHECKREGISTRATION;
@@ -256,6 +256,14 @@ public class DataManager {
 
         if (RuneScapeProfileType.getCurrent(client) == RuneScapeProfileType.BETA)
             return;
+
+        if (!checkRegistered(client.getLocalPlayer().getName())) {
+            return;
+        }
+
+        if (client.getGameState() == GameState.LOGIN_SCREEN || client.getGameState() == GameState.HOPPING) {
+            return;
+        }
 
         log.debug("Submitting changed data to endpoint...");
         JsonObject postRequestBody = convertToJson();

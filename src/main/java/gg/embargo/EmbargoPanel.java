@@ -41,6 +41,7 @@ public class EmbargoPanel extends PluginPanel {
     private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
     private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
     static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
+    static ImageIcon WEBSITE_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/website_icon.png"));
     private final JRichTextPane emailLabel = new JRichTextPane();
     private final JLabel loggedLabel = new JLabel();
     private final JLabel embargoScoreLabel = new JLabel(htmlLabel("Embargo Score:", " N/A"));
@@ -122,7 +123,7 @@ public class EmbargoPanel extends PluginPanel {
         actionsContainer.setLayout(new GridLayout(0, 1, 0, 10));
 
         actionsContainer.add(buildLinkPanel(DISCORD_ICON, "Join us on our", "Discord", "https://embargo.gg/discord"));
-        actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Go to our", "clan website", "https://embargo.gg/"));
+        actionsContainer.add(buildLinkPanel(WEBSITE_ICON, "Go to our", "clan website", "https://embargo.gg/"));
         actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Report a bug or", "inspect the plugin code", "https://github.com/Sharpienero/Embargo-Plugin"));
 
         this.add(versionPanel, BorderLayout.NORTH);
@@ -191,9 +192,7 @@ public class EmbargoPanel extends PluginPanel {
                     log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
                     log.info(username + " currently has " + getCurrentCAName);
                 } else {
-                    assert true;
-                    //TODO - Add panel for people who sign in but aren't registered with the clan
-                    // Possibly something to briefly explain the clan
+                    emailLabel.setText("Account not registered with Embargo");
                 }
                 this.isLoggedIn = true;
             } else {
