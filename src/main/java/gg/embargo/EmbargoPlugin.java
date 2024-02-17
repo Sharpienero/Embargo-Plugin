@@ -6,22 +6,27 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.events.StatChanged;
-import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.clan.ClanChannel;
+import net.runelite.api.clan.ClanRank;
+import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
+import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
+import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 
 @Slf4j
 @PluginDescriptor(
@@ -41,16 +46,17 @@ public class EmbargoPlugin extends Plugin {
 	private ClientThread clientThread;
 
 	@Inject
-	private Client client;
+	private DiscordService discordService;
 
 	@Inject
-	private EmbargoConfig config;
+	private Client client;
 
 	@Getter
 	@Setter
 	private int lastManifestVersion = -1;
 
 	private int[] oldVarps;
+
 	private RuneScapeProfileType lastProfile;
 
 	@Setter
@@ -59,13 +65,23 @@ public class EmbargoPlugin extends Plugin {
 	@Setter
 	private HashSet<Integer> varpsToCheck;
 
+	@Getter
+	private EmbargoPanel panel;
+
+	@Inject
+	private ClientToolbar clientToolbar;
+
+	private BufferedImage icon;
+	private NavigationButton navButton;
+
 	private final HashMultimap<Integer, Integer> varpToVarbitMapping = HashMultimap.create();
 	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
-	private final int SECONDS_BETWEEN_UPLOADS = 10;
-	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 20*60;
+	private final int SECONDS_BETWEEN_UPLOADS = 30;
+	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
+	private final int SECONDS_BETWEEN_PROFILE_UPDATE = 10;
 	private final int VARBITS_ARCHIVE_ID = 14;
 
-	public static final String CONFIG_GROUP_KEY = "EmbargoClan";
+	public static final String CONFIG_GROUP_KEY = "Embargo";
 	// THIS VERSION SHOULD BE INCREMENTED EVERY RELEASE WHERE WE ADD A NEW TOGGLE
 	public static final int VERSION = 1;
 
@@ -76,23 +92,42 @@ public class EmbargoPlugin extends Plugin {
 	}
 
 	@Override
-	protected void startUp() throws Exception
-	{
-		log.info("Embargo Clan started!");
+	protected void startUp() {
+		log.info("Embargo Clan plugin started!");
+
+		//Let's build out the sidepanels
+		panel = injector.getInstance(EmbargoPanel.class);
+		panel.init();
+		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
+
+		navButton = NavigationButton.builder()
+				.tooltip("Embargo Clan")
+				.icon(icon)
+				.priority(0)
+				.panel(panel)
+				.build();
+
+		clientToolbar.addNavigation(navButton);
+
 		lastProfile = null;
 		varbitsToCheck = null;
 		varpsToCheck = null;
 		skillLevelCache.clear();
 		dataManager.getManifest();
+		panel.updateLoggedIn(false);
 	}
 
 	@Override
-	protected void shutDown() throws Exception
-	{
-		log.info("Embargo Clan stopped!");
+	protected void shutDown() {
+		log.info("Embargo Clan plugin stopped!");
 		dataManager.clearData();
-	}
+		panel.reset();
+		clientToolbar.removeNavigation(navButton);
+		panel = null;
+		navButton = null;
 
+		checkProfileChange();
+	}
 	@Schedule(
 			period = SECONDS_BETWEEN_UPLOADS,
 			unit = ChronoUnit.SECONDS,
@@ -100,8 +135,18 @@ public class EmbargoPlugin extends Plugin {
 	)
 	public void submitToAPI()
 	{
-		if (client != null && client.getGameState() != GameState.HOPPING)
+		if (client != null && (client.getGameState() != GameState.HOPPING && client.getGameState() != GameState.LOGIN_SCREEN)) {
 			dataManager.submitToAPI();
+			if (client.getLocalPlayer() != null) {
+				String username = client.getLocalPlayer().getName();
+				if (dataManager.checkRegistered(username)) {
+					log.info("updateProfileAfterLoggedIn Member registered");
+					panel.updateLoggedIn(true);
+				}
+			}
+		} else {
+			log.info("User is hopping or logged out, do not send data");
+		}
 	}
 
 	@Schedule(
@@ -121,16 +166,34 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onGameTick(GameTick gameTick)
 	{
+		if (!panel.isLoggedIn && client.getLocalPlayer() != null) {
+			panel.updateLoggedIn(false);
+		}
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();
 	}
 
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			log.info("Resetting Embargo Side Panel");
+			panel.isLoggedIn = false;
+			panel.logOut();
+		}
+	}
+
 	public void checkProfileChange()
 	{
+		if (client.getLocalPlayer() != null) {
+
+		}
+
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
 		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
 		{
-			// profile change, we should clear the datamanager and do a new initial dump
+			// profile change, we should clear the dataManager and do a new initial dump
 			log.debug("Profile seemed to change... Reloading all data and updating profile");
 			lastProfile = r;
 			dataManager.clearData();
@@ -189,8 +252,7 @@ public class EmbargoPlugin extends Plugin {
 		}
 		for(Skill s : Skill.values())
 		{
-			if (s != Skill.OVERALL)
-				dataManager.storeSkillChanged(s.getName(), client.getRealSkillLevel(s));
+			dataManager.storeSkillChanged(s.getName(), client.getRealSkillLevel(s));
 		}
 	}
 
@@ -223,7 +285,7 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onStatChanged(StatChanged statChanged)
 	{
-		if (statChanged.getSkill() == null || statChanged.getSkill() == Skill.OVERALL)
+		if (statChanged.getSkill() == null)
 			return;
 		Integer cachedLevel = skillLevelCache.get(statChanged.getSkill().getName());
 		if (cachedLevel == null || cachedLevel != statChanged.getLevel())
@@ -236,7 +298,12 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired event) {
 		if (event.getScriptId() == 277) {
-			untrackableItemManager.getUntrackableItems();
+			if (client == null || client.getLocalPlayer() == null) {
+				return;
+			}
+
+			var username = client.getLocalPlayer().getName();
+			untrackableItemManager.getUntrackableItems(username);
 		}
 	}
 }

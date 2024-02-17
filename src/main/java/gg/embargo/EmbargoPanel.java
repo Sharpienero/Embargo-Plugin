@@ -1,137 +1,313 @@
 package gg.embargo;
 
-import gg.embargo.EmbargoConfig;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.plugins.info.JRichTextPane;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
-import net.runelite.client.ui.components.PluginErrorPanel;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.SwingUtil;
+import net.runelite.client.util.LinkBrowser;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.*;
-import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
 import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
+@Slf4j
 public class EmbargoPanel extends PluginPanel {
-    private static final ImageIcon DISCORD_ICON;
-    private static final ImageIcon DISCORD_HOVER;
-    private static final ImageIcon GITHUB_ICON;
-    private static final ImageIcon GITHUB_HOVER;
-
-    private final JPanel titlePanel;
-    private final JPanel supportButtons;
-    final JPanel fetchedInfoPanel;
-
-    private final JPanel sidePanel;
+    @Inject
+    @Nullable
+    private Client client;
+    @Inject
+    private EventBus eventBus;
 
     @Inject
-    EmbargoPanel(EmbargoPlugin plugin, EmbargoConfig config) {
-        this.supportButtons = new JPanel();
-        this.sidePanel = new JPanel();
-        this.titlePanel = new JPanel();
-        this.fetchedInfoPanel = new JPanel();
+    private DataManager dataManager;
+
+    @Setter
+    public boolean isLoggedIn = false;
+
+    JPanel versionPanel = new JPanel();
+
+    private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
+    private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
+    static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
+    static ImageIcon WEBSITE_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/website_icon.png"));
+    private final JRichTextPane emailLabel = new JRichTextPane();
+    private final JLabel loggedLabel = new JLabel();
+    private final JLabel embargoScoreLabel = new JLabel(htmlLabel("Embargo Score:", " N/A"));
+    private final JLabel accountScoreLabel = new JLabel(htmlLabel("Account Score:", " N/A"));
+    private final JLabel communityScoreLabel = new JLabel(htmlLabel("Community Score:", " N/A"));
+    private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
+    private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
+    private final JLabel currentCALabel = new JLabel(htmlLabel("Current TA Tier:", " N/A"));
+
+
+
+    @Inject
+    private EmbargoPanel() {
+
     }
 
-    public void sidePanelInitializer() {
-        this.setLayout(new BorderLayout());
-        this.setBorder(new EmptyBorder(10, 10, 10, 10));
-        this.sidePanel.setLayout(new BoxLayout(this.sidePanel, BoxLayout.Y_AXIS));
-        this.sidePanel.add(this.buildTitlePanel());
-        this.sidePanel.add(Box.createRigidArea(new Dimension(0, 5)));
-
-        this.sidePanel.add(this.buildSupportbuttons());
-
-        // Ensure to build all the panels on the initial load, do not build them every time I add or remove.
-        buildFetchedInfoPanel();
-
-        this.add(sidePanel, "North");
+    private String htmlLabel(String key, String value)
+    {
+        return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value + "</span></body></html>";
     }
 
-    private JPanel buildFetchedInfoPanel() {
-        fetchedInfoPanel.setLayout(new BorderLayout());
-        fetchedInfoPanel.setBorder(new EmptyBorder(0, 0, 0, 10));
+    void init()
+    {
+        setLayout(new BorderLayout());
+        setBackground(ColorScheme.DARK_GRAY_COLOR);
+        setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JPanel fetchedInfoSection = new JPanel();
-        fetchedInfoSection.setLayout(new GridLayout(9, 0, 0, 10));
-        fetchedInfoSection.setBorder(new EmptyBorder(15, 5, 3, 0));
 
-        fetchedInfoPanel.setBorder(new MatteBorder(0, 0, 1, 0, new Color(37, 125, 141)));
-        fetchedInfoPanel.add(fetchedInfoSection, "West");
+        versionPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        versionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        versionPanel.setLayout(new GridLayout(0, 1));
 
-        return fetchedInfoPanel;
+        final Font smallFont = FontManager.getRunescapeSmallFont();
+
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.0"));
+        version.setFont(smallFont);
+
+        JLabel revision = new JLabel();
+        revision.setFont(smallFont);
+
+        //Set up custom embargo labels
+        isRegisteredWithClanLabel.setFont(smallFont);
+        isRegisteredWithClanLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        embargoScoreLabel.setFont(smallFont);
+        embargoScoreLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        accountScoreLabel.setFont(smallFont);
+        accountScoreLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        communityScoreLabel.setFont(smallFont);
+        communityScoreLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        currentCALabel.setFont(smallFont);
+        currentCALabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+        loggedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        loggedLabel.setFont(smallFont);
+
+        currentRankLabel.setFont(smallFont);
+        currentRankLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+
+
+        emailLabel.setForeground(Color.WHITE);
+        emailLabel.setFont(smallFont);
+
+        versionPanel.add(version);
+        versionPanel.add(Box.createGlue());
+        versionPanel.add(loggedLabel);
+        versionPanel.add(emailLabel);
+        versionPanel.add(isRegisteredWithClanLabel);
+        versionPanel.add(embargoScoreLabel);
+        versionPanel.add(accountScoreLabel);
+        versionPanel.add(communityScoreLabel);
+        versionPanel.add(currentCALabel);
+
+        JPanel actionsContainer = new JPanel();
+        actionsContainer.setBorder(new EmptyBorder(10, 0, 0, 0));
+        actionsContainer.setLayout(new GridLayout(0, 1, 0, 10));
+
+        actionsContainer.add(buildLinkPanel(DISCORD_ICON, "Join us on our", "Discord", "https://embargo.gg/discord"));
+        actionsContainer.add(buildLinkPanel(WEBSITE_ICON, "Go to our", "clan website", "https://embargo.gg/"));
+        actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Report a bug or", "inspect the plugin code", "https://github.com/Sharpienero/Embargo-Plugin"));
+
+        this.add(versionPanel, BorderLayout.NORTH);
+        this.add(actionsContainer, BorderLayout.CENTER);
+
+        updateLoggedIn(false);
     }
 
-    static {
-        BufferedImage discordPNG = ImageUtil.loadImageResource(EmbargoPlugin.class, "/discord_icon.png");
-        BufferedImage githubPNG = ImageUtil.loadImageResource(EmbargoPlugin.class, "/github_icon.png");
-        DISCORD_ICON = new ImageIcon(discordPNG);
-        DISCORD_HOVER = new ImageIcon(ImageUtil.luminanceOffset(discordPNG, -80));
+    public void updateLoggedIn(boolean scheduled) {
 
-        GITHUB_ICON = new ImageIcon(githubPNG);
-        GITHUB_HOVER = new ImageIcon(ImageUtil.luminanceOffset(githubPNG, -80));
-    }
+        //TODO - Have potential states.
+        // If not logged in, display 1 panel.
+        // If logged in + registered, display a different panel.
+        // If logged in + not registered, display a third distinct panel.
+        if (!isLoggedIn || scheduled) {
+            if (client != null && client.getLocalPlayer() != null) {
+                var username = client.getLocalPlayer().getName();
+                loggedLabel.setText(htmlLabel("Signed in as", " " + username));
 
-    private JPanel buildTitlePanel() {
-        titlePanel.setBorder(new CompoundBorder(new EmptyBorder(5, 0, 0, 0), new MatteBorder(0, 0, 1, 0, new Color(37, 125, 141))));
-        titlePanel.setLayout(new BorderLayout());
-        PluginErrorPanel errorPanel = new PluginErrorPanel();
-        errorPanel.setBorder(new EmptyBorder(2, 0, 3, 0));
-        errorPanel.setContent("Embargo Clan", "We Don't Trade");
-        titlePanel.add(errorPanel, "Center");
-        return titlePanel;
-    }
+                boolean isRegisteredWithClan = dataManager.checkRegistered(username);
 
-    private JPanel buildSupportbuttons() {
-        supportButtons.setLayout(new BorderLayout());
-        supportButtons.setBorder(new EmptyBorder(4, 5, 0, 10));
+                if (isRegisteredWithClan) {
+                    //remove "Sign in to send..."
+                    versionPanel.remove(emailLabel);
 
-        JPanel myButtons = new JPanel(new GridBagLayout());
-        myButtons.setLayout(new GridLayout(1, 2, 8, 0));
-        myButtons.setBorder(new EmptyBorder(10, 5, 0, 0));
+                    //re-register labels with panel
+                    versionPanel.add(isRegisteredWithClanLabel);
+                    versionPanel.add(embargoScoreLabel);
+                    versionPanel.add(accountScoreLabel);
+                    versionPanel.add(communityScoreLabel);
+                    versionPanel.add(currentRankLabel);
+                    versionPanel.add(currentCALabel);
 
-        JButton discordButton = new JButton(DISCORD_ICON);
-        JButton githubButton = new JButton(GITHUB_ICON);
+                    isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
 
-        discordButton.setRolloverIcon(DISCORD_HOVER);
-        githubButton.setRolloverIcon(GITHUB_HOVER);
+                    //get gear
+                    var test = dataManager.getProfile(username);
+                    JsonElement currentAccountPoints = test.get("accountPoints");
 
-        discordButton.setPreferredSize(new Dimension(23, 25));
-        githubButton.setPreferredSize(new Dimension(20, 23));
+                    JsonElement currentCommunityPoints = test.getAsJsonPrimitive("communityPoints");
+                    embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints)) + Integer.parseInt(String.valueOf(currentCommunityPoints))))));
+                    //JsonObject currentHighestCombatAchievementTier = test.getAsJsonObject("currentHighestCombatAchievementTier");
+                    JsonElement getCurrentCAName = test.get("currentHighestCAName");
+                    accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
+                    communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
+                    //JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
+                    JsonArray missingGearReqs = test.getAsJsonArray("missingGearRequirements");
+                    JsonObject nextRank = test.getAsJsonObject("nextRank");
+                    JsonObject currentRank = test.getAsJsonObject("currentRank");
+                    JsonElement currentRankName = currentRank.get("name");
 
-        SwingUtil.removeButtonDecorations(githubButton);
-        SwingUtil.removeButtonDecorations(discordButton);
+                    var currentRankDisplay = String.valueOf(currentRankName).replace("\"", "");
+                    currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankDisplay));
 
-        githubButton.addActionListener(e -> githubLink());
-        discordButton.addActionListener(e -> discordLink());
+                    var displayCAName = String.valueOf(getCurrentCAName).replace("\"", "");
+                    displayCAName = displayCAName.replace(" Combat Achievement", "");
 
-        myButtons.add(githubButton);
-        myButtons.add(discordButton);
+                    JsonElement nextRankName = nextRank.get("name");
 
-        supportButtons.add(myButtons, "East");
+                    currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
-        return supportButtons;
-    }
+                    //TODO - Iterate over missingGearReqs and create a small image to display what the user is missing.
+                    // Can use a few plugins to check this, but the ones that I recommend are Loot Tracker and Bossing Info
 
-    public void discordLink() {
-        try {
-            Desktop.getDesktop().browse(new URI("https://embargo.gg/discord"));
-        } catch (IOException | URISyntaxException e1) {
-            // Implement a more efficient error handling strategy here
-            e1.printStackTrace();
+                    log.info(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
+                    log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
+                    log.info(username + " currently has " + getCurrentCAName);
+                } else {
+                    emailLabel.setText("Account not registered with Embargo");
+                }
+                this.isLoggedIn = true;
+            } else {
+                this.logOut();
+            }
+        } else {
+            logOut();
         }
     }
 
-    public void githubLink() {
-        try {
-            Desktop.getDesktop().browse(new URI("https://github.com/Sharpienero/Embargo-Plugin"));
-        } catch (IOException | URISyntaxException e1) {
-            // Implement a more efficient error handling strategy here
-            e1.printStackTrace();
-        }
+    public void logOut() {
+        this.isLoggedIn = false;
+        emailLabel.setContentType("text/html");
+        emailLabel.setText("Sign in to send data to Embargo.");
+        loggedLabel.setText("Not signed in");
+
+        //Set to NA
+        isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " No"));
+        embargoScoreLabel.setText(htmlLabel("Embargo Score:", " N/A"));
+        currentRankLabel.setText(htmlLabel("Current Rank:", " N/A"));
+        accountScoreLabel.setText(htmlLabel("Account Score:", " N/A"));
+        communityScoreLabel.setText(htmlLabel("Community Score:", " N/A"));
+
+        //Add back email label
+        versionPanel.add(emailLabel);
+
+        //Unregister from the component
+        versionPanel.remove(isRegisteredWithClanLabel);
+        versionPanel.remove(embargoScoreLabel);
+        versionPanel.remove(accountScoreLabel);
+        versionPanel.remove(communityScoreLabel);
+        versionPanel.remove(currentRankLabel);
+        versionPanel.remove(currentCALabel);
+
+    }
+
+    void reset()
+    {
+        eventBus.unregister(this);
+        this.updateLoggedIn(false);
+    }
+
+    /**
+     * Builds a link panel with a given icon, text and url to redirect to.
+     */
+    private static JPanel buildLinkPanel(ImageIcon icon, String topText, String bottomText, String url)
+    {
+        return buildLinkPanel(icon, topText, bottomText, () -> LinkBrowser.browse(url));
+    }
+
+    /**
+     * Builds a link panel with a given icon, text and callable to call.
+     */
+    private static JPanel buildLinkPanel(ImageIcon icon, String topText, String bottomText, Runnable callback) {
+        JPanel container = new JPanel();
+        container.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        container.setLayout(new BorderLayout());
+        container.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        final Color hoverColor = ColorScheme.DARKER_GRAY_HOVER_COLOR;
+        final Color pressedColor = ColorScheme.DARKER_GRAY_COLOR.brighter();
+
+        JLabel iconLabel = new JLabel(icon);
+        container.add(iconLabel, BorderLayout.WEST);
+
+        JPanel textContainer = new JPanel();
+        textContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        textContainer.setLayout(new GridLayout(2, 1));
+        textContainer.setBorder(new EmptyBorder(5, 10, 5, 10));
+
+        container.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent mouseEvent) {
+                container.setBackground(pressedColor);
+                textContainer.setBackground(pressedColor);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                callback.run();
+                container.setBackground(hoverColor);
+                textContainer.setBackground(hoverColor);
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                container.setBackground(hoverColor);
+                textContainer.setBackground(hoverColor);
+                container.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                container.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                textContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                container.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+            }
+        });
+
+        JLabel topLine = new JLabel(topText);
+        topLine.setForeground(Color.WHITE);
+        topLine.setFont(FontManager.getRunescapeSmallFont());
+
+        JLabel bottomLine = new JLabel(bottomText);
+        bottomLine.setForeground(Color.WHITE);
+        bottomLine.setFont(FontManager.getRunescapeSmallFont());
+
+        textContainer.add(topLine);
+        textContainer.add(bottomLine);
+
+        container.add(textContainer, BorderLayout.CENTER);
+
+        JLabel arrowLabel = new JLabel(ARROW_RIGHT_ICON);
+        container.add(arrowLabel, BorderLayout.EAST);
+
+        return container;
     }
 }
