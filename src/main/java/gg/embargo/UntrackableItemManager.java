@@ -26,6 +26,9 @@ public class UntrackableItemManager {
     @Inject
     private Client client;
 
+    @Inject
+    private OkHttpClient okHttpClient;
+
     private static final String UNTRACKABLE_ENDPOINT = "https://embargo.gg/api/untrackables";
 
     @Getter
@@ -75,7 +78,6 @@ public class UntrackableItemManager {
                 }
             }
 
-            OkHttpClient httpClient = new OkHttpClient();
             var RequestBody = new FormBody.Builder();
             for (int i=0; i < playerItems.size(); i++) {
                 RequestBody.add("itemIds[" + i + "]", String.valueOf(playerItems.get(i)));
@@ -90,7 +92,7 @@ public class UntrackableItemManager {
                     .build();
 
             try {
-                httpClient.newCall(request).enqueue(new Callback() {
+                okHttpClient.newCall(request).enqueue(new Callback() {
                     @Override
                     public void onFailure(@NonNull Call call, @NonNull IOException e) {
                         log.error("Something went wrong inside of untrackable items");

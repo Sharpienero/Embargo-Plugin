@@ -319,7 +319,7 @@ public class DataManager {
                                 return;
                             }
 
-                            JsonObject j = new Gson().fromJson(response.body().string(), JsonObject.class);
+                            JsonObject j = gson.fromJson(response.body().string(), JsonObject.class);
                             log.info(j.toString());
 
                             try {
@@ -388,7 +388,7 @@ public class DataManager {
                                 return;
                             }
 
-                            JsonObject j = new Gson().fromJson(response.body().string(), JsonObject.class);
+                            JsonObject j = gson.fromJson(response.body().string(), JsonObject.class);
 
                             try {
                                 try {
