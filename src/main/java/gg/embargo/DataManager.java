@@ -30,16 +30,18 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Player;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
+import net.runelite.client.game.ItemStack;
+import net.runelite.client.plugins.loottracker.LootReceived;
 import okhttp3.*;
 import okio.BufferedSource;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -70,7 +72,9 @@ public class DataManager {
          MANIFEST("runelite/manifest"),
          UNTRACKABLES("untrackables"),
          CHECKREGISTRATION("checkregistration"),
-         GET_PROFILE("getgear");
+         GET_PROFILE("getgear"),
+         SUBMIT_LOOT("loot"),
+         GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses");
 
          APIRoutes(String route) {
              this.route = route;
@@ -89,11 +93,63 @@ public class DataManager {
     private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
     private static final String CHECK_REGISTRATION_ENDPOINT = API_URI + APIRoutes.CHECKREGISTRATION;
     private static final String GET_PROFILE_ENDPOINT = API_URI + APIRoutes.GET_PROFILE;
+    private static final String SUBMIT_LOOT_ENDPOINT = API_URI + APIRoutes.SUBMIT_LOOT;
+    public static final String TRACK_MONSTERS_ENDPOINT = API_URI + APIRoutes.GET_RAID_MONSTERS_TO_TRACK_LOOT;
+
+    public static ArrayList BossesToTrack = null;
 
     public void storeVarbitChanged(int varbIndex, int varbValue) {
         synchronized (this) {
             varbData.put(varbIndex, varbValue);
         }
+    }
+
+    public List<Player> getRaidMembers() {
+        return client.getPlayers();
+    }
+
+    public boolean shouldTrackLoot(String bossName) {
+        if (bossName == null || bossName.isEmpty()) {
+            return false;
+        }
+
+        var bosses = getTrackableBosses();
+
+        for (Object boss : bosses) {
+            if (boss.equals(bossName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public ArrayList getTrackableBosses() {
+        if (BossesToTrack != null) {
+            return BossesToTrack;
+        }
+        okHttpClient.newCall(new Request.Builder().url(TRACK_MONSTERS_ENDPOINT).build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                log.info("Failed to get raid boss list");
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                //Update what we want to track on the fly
+                if (response.isSuccessful()) {
+                    //convert response.body().string() to ArrayList<String>
+                    BufferedSource source = response.body().source();
+                    String json = source.readUtf8();
+                    response.close();
+
+                    // convert json to an ArrayList<String>
+                    BossesToTrack = gson.fromJson(json, ArrayList.class);
+                }
+            }
+        });
+        return null;
     }
 
     public JsonObject getProfile(String username) {
@@ -147,6 +203,70 @@ public class DataManager {
         }
 
         return false;
+    }
+
+    public void uploadLoot(LootReceived event) {
+        JsonObject payload = getJsonObject(event);
+
+        log.info("Uploading payload: " + payload.toString());
+
+        Request request = new Request.Builder()
+                .url(SUBMIT_LOOT_ENDPOINT)
+                .post(RequestBody.create(JSON, payload.toString()))
+                .build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                log.error("Error uploading loot", e);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    log.info("Loot uploaded successfully");
+                } else {
+                    log.error("Loot upload failed with status " + response.code());
+                }
+                response.close();
+            }
+        });
+    }
+
+    @NonNull
+    private JsonObject getJsonObject(LootReceived event) {
+        Collection<ItemStack> itemStacks = event.getItems();
+
+        var user = client.getLocalPlayer().getName();
+        List<Player> players = getRaidMembers();
+
+        //convert List<Player> to JSON
+        JsonArray playersJson = new JsonArray();
+        for (Player player : players) {
+            JsonObject playerJson = new JsonObject();
+            playerJson.addProperty("name", player.getName());
+            playersJson.add(playerJson);
+        }
+
+        //convert itemStacks to JSON using gson
+        JsonArray itemStacksJson = new JsonArray();
+        for (ItemStack itemStack : itemStacks) {
+            JsonObject itemStackJson = new JsonObject();
+            itemStackJson.addProperty("id", itemStack.getId());
+            itemStackJson.addProperty("quantity", itemStack.getQuantity());
+            itemStacksJson.add(itemStackJson);
+        }
+
+        //convert json array to String
+        String itemStacksJsonString = itemStacksJson.toString();
+
+        //build payload with bossName and itemStacks
+        JsonObject payload = new JsonObject();
+        payload.addProperty("bossName", event.getName());
+        payload.addProperty("user", user);
+        payload.addProperty("itemStacks", itemStacksJsonString);
+        payload.add("players", playersJson);
+        return payload;
     }
 
     public void storeVarbitChangedIfNotStored(int varbIndex, int varbValue) {
@@ -316,10 +436,9 @@ public class DataManager {
                             if (response.body() == null) {
                                 log.error("Manifest request succeeded but returned empty body");
                                 response.close();
-                                return;
                             }
 
-                            JsonObject j = new Gson().fromJson(response.body().string(), JsonObject.class);
+                            JsonObject j = gson.fromJson(response.body().string(), JsonObject.class);
                             log.info(j.toString());
 
                             try {
@@ -385,10 +504,9 @@ public class DataManager {
                             if (response.body() == null) {
                                 log.error("Manifest request succeeded but returned empty body");
                                 response.close();
-                                return;
                             }
 
-                            JsonObject j = new Gson().fromJson(response.body().string(), JsonObject.class);
+                            JsonObject j = gson.fromJson(response.body().string(), JsonObject.class);
 
                             try {
                                 try {

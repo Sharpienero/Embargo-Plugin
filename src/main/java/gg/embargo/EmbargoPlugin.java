@@ -6,8 +6,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.clan.ClanChannel;
-import net.runelite.api.clan.ClanRank;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -16,17 +14,18 @@ import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Objects;
 
 @Slf4j
 @PluginDescriptor(
@@ -44,9 +43,6 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private ClientThread clientThread;
-
-	@Inject
-	private DiscordService discordService;
 
 	@Inject
 	private Client client;
@@ -78,12 +74,7 @@ public class EmbargoPlugin extends Plugin {
 	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
-	private final int SECONDS_BETWEEN_PROFILE_UPDATE = 10;
 	private final int VARBITS_ARCHIVE_ID = 14;
-
-	public static final String CONFIG_GROUP_KEY = "Embargo";
-	// THIS VERSION SHOULD BE INCREMENTED EVERY RELEASE WHERE WE ADD A NEW TOGGLE
-	public static final int VERSION = 1;
 
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager)
@@ -95,7 +86,7 @@ public class EmbargoPlugin extends Plugin {
 	protected void startUp() {
 		log.info("Embargo Clan plugin started!");
 
-		//Let's build out the sidepanels
+		//Let's build out the side panels
 		panel = injector.getInstance(EmbargoPanel.class);
 		panel.init();
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
@@ -304,6 +295,22 @@ public class EmbargoPlugin extends Plugin {
 
 			var username = client.getLocalPlayer().getName();
 			untrackableItemManager.getUntrackableItems(username);
+		}
+	}
+
+	@Subscribe
+	public void onLootReceived(final LootReceived event)
+	{
+		if (event.getType() != LootRecordType.NPC && event.getType() != LootRecordType.EVENT)
+		{
+			return;
+		}
+
+		if (dataManager.shouldTrackLoot(event.getName())) {
+			log.info("Player killed " + event.getName());
+			dataManager.uploadLoot(event);
+		} else {
+			log.info("Player killed " + event.getName() + " , nothing to log");
 		}
 	}
 }
