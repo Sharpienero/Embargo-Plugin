@@ -101,9 +101,8 @@ public class UntrackableItemManager {
                     @Override
                     public void onResponse(@NonNull Call call, @NonNull Response response) {
                         if (response.isSuccessful()) {
-                            log.info("good");
+                            log.debug("Successfully submitted untrackable items");
                         }
-
                         response.close();
                     }
                 });
