@@ -28,11 +28,10 @@ package gg.embargo;
 import com.google.gson.*;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.Player;
+import net.runelite.api.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import okhttp3.*;
@@ -49,6 +48,9 @@ import java.util.concurrent.TimeUnit;
 public class DataManager {
     @Inject
     private Client client;
+
+    @Inject
+    private ItemManager itemManager;
 
     @Inject
     private ClientThread clientThread;
@@ -208,7 +210,7 @@ public class DataManager {
     public void uploadLoot(LootReceived event) {
         JsonObject payload = getJsonObject(event);
 
-        log.info("Uploading payload: " + payload.toString());
+        log.info("Uploading payload: " + payload);
 
         Request request = new Request.Builder()
                 .url(SUBMIT_LOOT_ENDPOINT)
@@ -254,6 +256,9 @@ public class DataManager {
             JsonObject itemStackJson = new JsonObject();
             itemStackJson.addProperty("id", itemStack.getId());
             itemStackJson.addProperty("quantity", itemStack.getQuantity());
+            itemStackJson.addProperty("price", itemManager.getItemPrice(itemStack.getId()));
+            itemStackJson.addProperty("name", itemManager.getItemComposition(itemStack.getId()).getName());
+
             itemStacksJson.add(itemStackJson);
         }
 
