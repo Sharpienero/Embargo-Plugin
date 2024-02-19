@@ -131,12 +131,12 @@ public class EmbargoPlugin extends Plugin {
 			if (client.getLocalPlayer() != null) {
 				String username = client.getLocalPlayer().getName();
 				if (dataManager.checkRegistered(username)) {
-					log.info("updateProfileAfterLoggedIn Member registered");
+					log.debug("updateProfileAfterLoggedIn Member registered");
 					panel.updateLoggedIn(true);
 				}
 			}
 		} else {
-			log.info("User is hopping or logged out, do not send data");
+			log.debug("User is hopping or logged out, do not send data");
 		}
 	}
 
@@ -307,10 +307,10 @@ public class EmbargoPlugin extends Plugin {
 		}
 
 		if (dataManager.shouldTrackLoot(event.getName())) {
-			log.info("Player killed " + event.getName());
+			log.debug("Player killed " + event.getName());
 			dataManager.uploadLoot(event);
 		} else {
-			log.info("Player killed " + event.getName() + " , nothing to log");
+			log.debug("Player killed " + event.getName() + " , nothing to log");
 		}
 	}
 }

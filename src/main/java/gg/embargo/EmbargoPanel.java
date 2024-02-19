@@ -188,9 +188,9 @@ public class EmbargoPanel extends PluginPanel {
                     //TODO - Iterate over missingGearReqs and create a small image to display what the user is missing.
                     // Can use a few plugins to check this, but the ones that I recommend are Loot Tracker and Bossing Info
 
-                    log.info(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
-                    log.info(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
-                    log.info(username + " currently has " + getCurrentCAName);
+                    log.debug(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
+                    log.debug(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
+                    log.debug(username + " currently has " + getCurrentCAName);
                 } else {
                     emailLabel.setText("Account not registered with Embargo");
                 }

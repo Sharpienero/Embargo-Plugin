@@ -133,7 +133,7 @@ public class DataManager {
         okHttpClient.newCall(new Request.Builder().url(TRACK_MONSTERS_ENDPOINT).build()).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.info("Failed to get raid boss list");
+                log.debug("Failed to get raid boss list");
                 e.printStackTrace();
             }
 
@@ -210,7 +210,7 @@ public class DataManager {
     public void uploadLoot(LootReceived event) {
         JsonObject payload = getJsonObject(event);
 
-        log.info("Uploading payload: " + payload);
+        log.debug("Uploading payload: " + payload);
 
         Request request = new Request.Builder()
                 .url(SUBMIT_LOOT_ENDPOINT)
@@ -226,7 +226,7 @@ public class DataManager {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
-                    log.info("Loot uploaded successfully");
+                    log.debug("Loot uploaded successfully");
                 } else {
                     log.error("Loot upload failed with status " + response.code());
                 }
@@ -421,7 +421,7 @@ public class DataManager {
     }
 
     protected void getManifest() {
-        log.info("Getting manifest file...");
+        log.debug("Getting manifest file...");
         try {
             Request r = new Request.Builder()
                     .url(MANIFEST_ENDPOINT)
@@ -444,8 +444,6 @@ public class DataManager {
                             }
 
                             JsonObject j = gson.fromJson(response.body().string(), JsonObject.class);
-                            log.info(j.toString());
-
                             try {
                                 plugin.setVarbitsToCheck(parseSet(j.getAsJsonArray("varbits")));
                                 plugin.setVarpsToCheck(parseSet(j.getAsJsonArray("varps")));
@@ -486,7 +484,6 @@ public class DataManager {
 
     protected int getVersion() {
         log.debug("Attempting to get manifest version...");
-        log.info(MANIFEST_ENDPOINT);
         Request request = new Request.Builder()
                 .url(MANIFEST_ENDPOINT)
                 .build();
