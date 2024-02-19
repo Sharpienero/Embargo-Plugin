@@ -10,7 +10,6 @@ import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
-import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -162,6 +161,45 @@ public class EmbargoPlugin extends Plugin {
 		}
 		// Call a helper function since it needs to be called from DataManager as well
 		checkProfileChange();
+	}
+
+	@Getter
+	public enum RaidCompletionMessages {
+		COX("Congratulations - your raid is complete!"),
+		TOB("Theatre of Blood total completion time:"),
+		HM_TOB("Your completed Theatre of Blood: Hard Mode count is:"),
+		TOA("Tombs of Amascut total completion time:"),
+		TOA_EXPERT("Tombs of Amascut: Expert Mode total completion time:");
+
+		private final String completionMessage;
+
+		RaidCompletionMessages(String completionMessage) {
+			this.completionMessage = completionMessage;
+		}
+
+	}
+
+	@Subscribe
+	public void onChatMessage(ChatMessage chatMessage)
+	{
+		Player player = client.getLocalPlayer();
+
+		if (player == null)
+		{
+			return;
+		}
+
+		if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE || chatMessage.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION || chatMessage.getType() == ChatMessageType.SPAM)
+		{
+			String message = chatMessage.getMessage();
+			for (RaidCompletionMessages r : RaidCompletionMessages.values())
+			{
+				if (message.contains(r.getCompletionMessage()))
+				{
+					dataManager.uploadRaidCompletion(r.name(), message);
+				}
+			}
+		}
 	}
 
 	@Subscribe

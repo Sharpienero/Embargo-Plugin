@@ -76,7 +76,8 @@ public class DataManager {
          CHECKREGISTRATION("checkregistration"),
          GET_PROFILE("getgear"),
          SUBMIT_LOOT("loot"),
-         GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses");
+         GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses"),
+         PREPARE_RAID("raid");
 
          APIRoutes(String route) {
              this.route = route;
@@ -97,6 +98,7 @@ public class DataManager {
     private static final String GET_PROFILE_ENDPOINT = API_URI + APIRoutes.GET_PROFILE;
     private static final String SUBMIT_LOOT_ENDPOINT = API_URI + APIRoutes.SUBMIT_LOOT;
     public static final String TRACK_MONSTERS_ENDPOINT = API_URI + APIRoutes.GET_RAID_MONSTERS_TO_TRACK_LOOT;
+    public static final String PREPARE_RAID = API_URI + APIRoutes.PREPARE_RAID;
 
     public static ArrayList BossesToTrack = null;
 
@@ -152,6 +154,54 @@ public class DataManager {
             }
         });
         return null;
+    }
+
+    public void uploadRaidCompletion(String raid, String message) {
+        if (client == null || client.getLocalPlayer() == null) {
+            return;
+        }
+
+        JsonObject payload = getRaidCompletionPayload(raid, message);
+
+        Request request = new Request.Builder()
+                .url(PREPARE_RAID)
+                .post(RequestBody.create(JSON, payload.toString()))
+                .build();
+
+        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
+                .callTimeout(5, TimeUnit.SECONDS)
+                .build();
+
+        try (Response response = shortTimeoutClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                log.debug("Successfully uploaded raid preperation");
+            } else {
+                log.error("Failed to check if user is registered.");
+            }
+        } catch (IOException ioException) {
+            log.error("Failed to check if user is registered.");
+        }
+    }
+
+    @NonNull
+    private JsonObject getRaidCompletionPayload(String raid, String message) {
+        var user = client.getLocalPlayer().getName();
+        List<Player> players = getRaidMembers();
+
+        //convert List<Player> to JSON
+        JsonArray playersJson = new JsonArray();
+        for (Player player : players) {
+            JsonObject playerJson = new JsonObject();
+            playerJson.addProperty("name", player.getName());
+            playersJson.add(playerJson);
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("raid", raid);
+        payload.addProperty("message", message);
+        payload.addProperty("user", user);
+        payload.add("players", playersJson);
+        return payload;
     }
 
     public JsonObject getProfile(String username) {
