@@ -166,6 +166,7 @@ public class EmbargoPlugin extends Plugin {
 	@Getter
 	public enum RaidCompletionMessages {
 		COX("Congratulations - your raid is complete!"),
+		COX_CM("Your completed Chambers of Xeric Challenge Mode count is:"),
 		TOB("Theatre of Blood total completion time:"),
 		HM_TOB("Your completed Theatre of Blood: Hard Mode count is:"),
 		TOA("Tombs of Amascut total completion time:"),
