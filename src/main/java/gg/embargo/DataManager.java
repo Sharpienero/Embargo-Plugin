@@ -174,7 +174,7 @@ public class DataManager {
 
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
-                log.debug("Successfully uploaded raid preperation");
+                log.debug("Successfully uploaded raid preparation");
             } else {
                 log.error("Failed to check if user is registered.");
             }
