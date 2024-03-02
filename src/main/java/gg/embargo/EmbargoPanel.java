@@ -160,19 +160,19 @@ public class EmbargoPanel extends PluginPanel {
                     isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
 
                     //get gear
-                    var test = dataManager.getProfile(username);
-                    JsonElement currentAccountPoints = test.get("accountPoints");
+                    var embargoProfileData = dataManager.getProfile(username);
+                    JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
 
-                    JsonElement currentCommunityPoints = test.getAsJsonPrimitive("communityPoints");
+                    JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
                     embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints)) + Integer.parseInt(String.valueOf(currentCommunityPoints))))));
-                    //JsonObject currentHighestCombatAchievementTier = test.getAsJsonObject("currentHighestCombatAchievementTier");
-                    JsonElement getCurrentCAName = test.get("currentHighestCAName");
+                    //JsonObject currentHighestCombatAchievementTier = embargoProfileData.getAsJsonObject("currentHighestCombatAchievementTier");
+                    JsonElement getCurrentCAName = embargoProfileData.get("currentHighestCAName");
                     accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
                     communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
-                    //JsonArray currentGearReqs = test.getAsJsonArray("currentGearRequirements");
-                    JsonArray missingGearReqs = test.getAsJsonArray("missingGearRequirements");
-                    JsonObject nextRank = test.getAsJsonObject("nextRank");
-                    JsonObject currentRank = test.getAsJsonObject("currentRank");
+                    //JsonArray currentGearReqs = embargoProfileData.getAsJsonArray("currentGearRequirements");
+                    JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
+                    JsonObject nextRank = embargoProfileData.getAsJsonObject("nextRank");
+                    JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
                     JsonElement currentRankName = currentRank.get("name");
 
                     var currentRankDisplay = String.valueOf(currentRankName).replace("\"", "");

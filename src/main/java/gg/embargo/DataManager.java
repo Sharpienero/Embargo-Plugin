@@ -98,7 +98,7 @@ public class DataManager {
     private static final String GET_PROFILE_ENDPOINT = API_URI + APIRoutes.GET_PROFILE;
     private static final String SUBMIT_LOOT_ENDPOINT = API_URI + APIRoutes.SUBMIT_LOOT;
     public static final String TRACK_MONSTERS_ENDPOINT = API_URI + APIRoutes.GET_RAID_MONSTERS_TO_TRACK_LOOT;
-    public static final String PREPARE_RAID = API_URI + APIRoutes.PREPARE_RAID;
+    public static final String PREPARE_RAID_ENDPOINT = API_URI + APIRoutes.PREPARE_RAID;
 
     public static ArrayList BossesToTrack = null;
 
@@ -164,7 +164,7 @@ public class DataManager {
         JsonObject payload = getRaidCompletionPayload(raid, message);
 
         Request request = new Request.Builder()
-                .url(PREPARE_RAID)
+                .url(PREPARE_RAID_ENDPOINT)
                 .post(RequestBody.create(JSON, payload.toString()))
                 .build();
 
