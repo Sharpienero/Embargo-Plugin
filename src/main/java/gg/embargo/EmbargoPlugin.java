@@ -30,7 +30,7 @@ import java.util.HashSet;
 @Slf4j
 @PluginDescriptor(
 	name = "Embargo Clan",
-	description = "A plugin to help Embargo Clan properly track items and accomplishments.",
+	description = "A plugin to sync your account with Embargo",
 	tags = {"embargo", "clan", "embargo.gg", "ironman"}
 )
 public class EmbargoPlugin extends Plugin {
