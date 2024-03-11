@@ -22,6 +22,7 @@ import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,8 +66,6 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private ClientToolbar clientToolbar;
-
-	private BufferedImage icon;
 	private NavigationButton navButton;
 
 	private final HashMultimap<Integer, Integer> varpToVarbitMapping = HashMultimap.create();
@@ -74,6 +73,8 @@ public class EmbargoPlugin extends Plugin {
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
+
+	private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
 
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager)
@@ -216,9 +217,7 @@ public class EmbargoPlugin extends Plugin {
 
 	public void checkProfileChange()
 	{
-		if (client.getLocalPlayer() != null) {
-
-		}
+		if (client == null) return;
 
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
 		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
@@ -333,8 +332,19 @@ public class EmbargoPlugin extends Plugin {
 			}
 
 			var username = client.getLocalPlayer().getName();
-			untrackableItemManager.getUntrackableItems(username);
-		}
+
+            if (lastLootTime.containsKey(username)) {
+                LocalDateTime lastLootTimestamp = lastLootTime.get(username);
+
+                if (LocalDateTime.now().isBefore(lastLootTimestamp)) {
+                    log.debug("Player has opened bank within the last 3 minutes, not checking for untrackable items");
+                    return;
+                }
+
+            }
+            untrackableItemManager.getUntrackableItems(username);
+            lastLootTime.put(username, LocalDateTime.now().plusMinutes(3));
+        }
 	}
 
 	@Subscribe
