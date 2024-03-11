@@ -76,7 +76,7 @@ public class EmbargoPanel extends PluginPanel {
 
         final Font smallFont = FontManager.getRunescapeSmallFont();
 
-        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.0"));
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.1"));
         version.setFont(smallFont);
 
         JLabel revision = new JLabel();
