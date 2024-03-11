@@ -221,10 +221,8 @@ public class EmbargoPlugin extends Plugin {
 
 	public void checkProfileChange()
 	{
-		if (client.getLocalPlayer() != null) {
-
-		}
-
+		if (client == null) return;
+		
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
 		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
 		{
