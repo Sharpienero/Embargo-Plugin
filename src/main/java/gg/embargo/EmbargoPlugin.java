@@ -66,8 +66,6 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private ClientToolbar clientToolbar;
-
-	private BufferedImage icon;
 	private NavigationButton navButton;
 
 	private final HashMultimap<Integer, Integer> varpToVarbitMapping = HashMultimap.create();
@@ -75,9 +73,7 @@ public class EmbargoPlugin extends Plugin {
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
-	private final int MINUTES_BETWEEN_UNTRACKABLE_ITEM_CHECKS = 3;
 
-    //instantiate map that takes String: datetime
 	private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
 
 	@Provides
@@ -222,7 +218,7 @@ public class EmbargoPlugin extends Plugin {
 	public void checkProfileChange()
 	{
 		if (client == null) return;
-		
+
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
 		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
 		{
@@ -347,7 +343,7 @@ public class EmbargoPlugin extends Plugin {
 
             }
             untrackableItemManager.getUntrackableItems(username);
-            lastLootTime.put(username, LocalDateTime.now().plusMinutes(MINUTES_BETWEEN_UNTRACKABLE_ITEM_CHECKS));
+            lastLootTime.put(username, LocalDateTime.now().plusMinutes(3));
         }
 	}
 
