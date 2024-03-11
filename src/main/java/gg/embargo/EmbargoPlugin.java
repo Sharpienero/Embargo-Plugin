@@ -22,6 +22,7 @@ import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,6 +75,10 @@ public class EmbargoPlugin extends Plugin {
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
+	private final int MINUTES_BETWEEN_UNTRACKABLE_ITEM_CHECKS = 3;
+
+    //instantiate map that takes String: datetime
+	private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
 
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager)
@@ -333,8 +338,19 @@ public class EmbargoPlugin extends Plugin {
 			}
 
 			var username = client.getLocalPlayer().getName();
-			untrackableItemManager.getUntrackableItems(username);
-		}
+
+            if (lastLootTime.containsKey(username)) {
+                LocalDateTime lastLootTimestamp = lastLootTime.get(username);
+
+                if (LocalDateTime.now().isBefore(lastLootTimestamp)) {
+                    log.debug("Player has opened bank within the last 3 minutes, not checking for untrackable items");
+                    return;
+                }
+
+            }
+            untrackableItemManager.getUntrackableItems(username);
+            lastLootTime.put(username, LocalDateTime.now().plusMinutes(MINUTES_BETWEEN_UNTRACKABLE_ITEM_CHECKS));
+        }
 	}
 
 	@Subscribe
