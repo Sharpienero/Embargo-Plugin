@@ -60,8 +60,11 @@ public class EmbargoPanel extends PluginPanel {
     private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
     private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
     private final JLabel currentCALabel = new JLabel(htmlLabel("Current TA Tier:", " N/A"));
-    private final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+    private JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
     private final Font smallFont = FontManager.getRunescapeSmallFont();
+    final JPanel missingRequirementsContainer = new JPanel(new BorderLayout(5, 0));
+    //Set up text inside ofs
+    final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
 
     @Inject
     private EmbargoPanel(ItemManager itemManager) {
@@ -135,22 +138,17 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     void setupMissingItemsPanel() {
-        //The dark black title for the panel
-        final JPanel missingRequirementsTitle = new JPanel(new BorderLayout(5, 0));
-        missingRequirementsTitle.setBorder(new EmptyBorder(7, 7, 7, 7));
-        missingRequirementsTitle.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        missingRequirementsContainer.setBorder(new EmptyBorder(7, 7, 7, 7));
+        missingRequirementsContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        //Set up text inside of
-        String nextRankTitle = "Missing Requirements For Next Rank";
-        final JLabel playerNameLabel = new JLabel(nextRankTitle, JLabel.LEFT); // "e.g Missing Requirements For Beast"
         playerNameLabel.setFont(FontManager.getRunescapeSmallFont());
         playerNameLabel.setForeground(Color.WHITE);
         playerNameLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
 
-        missingRequirementsTitle.add(playerNameLabel, BorderLayout.NORTH);
-        missingRequirementsTitle.setFont(FontManager.getRunescapeSmallFont());
-        missingRequirementsTitle.setForeground(Color.WHITE);
-        missingRequirementsTitle.add(missingRequirementsPanel);
+        missingRequirementsContainer.add(playerNameLabel, BorderLayout.NORTH);
+        missingRequirementsContainer.setFont(FontManager.getRunescapeSmallFont());
+        missingRequirementsContainer.setForeground(Color.WHITE);
+        missingRequirementsContainer.add(missingRequirementsPanel);
 
         missingRequirementsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         missingRequirementsPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
@@ -163,7 +161,7 @@ public class EmbargoPanel extends PluginPanel {
         missingRequirementsPanel.add(missingRequiredItemsLabel, BorderLayout.NORTH);
 
         //Push text to top of component
-        this.add(missingRequirementsTitle, BorderLayout.NORTH);
+        this.add(missingRequirementsContainer, BorderLayout.NORTH);
     }
 
     void addSidePanel() {
@@ -178,9 +176,7 @@ public class EmbargoPanel extends PluginPanel {
         this.setUpQuickLinks();
         this.addSidePanel();
 
-
         //Update version panel with Embargo plugin information
-        //TODO - Will include required items + raids in the future
         updateLoggedIn(false);
     }
 
@@ -278,6 +274,9 @@ public class EmbargoPanel extends PluginPanel {
         emailLabel.setContentType("text/html");
         emailLabel.setText("Sign in to send data to Embargo.");
         loggedLabel.setText("Not signed in");
+
+        //Reset missing gear requirements
+        missingRequiredItemsLabel.setText(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
 
         //Set to NA
         isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " No"));
