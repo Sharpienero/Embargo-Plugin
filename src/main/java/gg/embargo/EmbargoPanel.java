@@ -152,63 +152,14 @@ public class EmbargoPanel extends PluginPanel {
         playerNameLabel.setForeground(Color.WHITE);
         missingRequirementsTitle.add(playerNameLabel, BorderLayout.WEST);
 
-
         missingRequirementsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         missingRequirementsPanel.setBorder(new EmptyBorder(0, 10, 0, 10));
         missingRequirementsPanel.setLayout(new GridLayout(0, 1));
-
-        //test
-        PlayerMistakesBox box = buildBox(playerName);
-        box.rebuildAllMistakes(isRaidDeaths);
 
         this.add(mistakesContainer, BorderLayout.CENTER);
         this.add(missingRequirementsTitle, BorderLayout.CENTER);
     }
 
-    private PlayerMistakesBox buildBox(String playerName) {
-        for (PlayerMistakesBox box : playerMistakesBoxes) {
-            if (box.getPlayerName().equals(playerName)) {
-                return box;
-            }
-        }
-
-        // Create a new box if one could not be found
-        PlayerMistakesBox box = new PlayerMistakesBox(mistakeStateManager, playerName);
-
-        // Use the existing popup menu or create a new one
-        JPopupMenu popupMenu = box.getComponentPopupMenu();
-        if (popupMenu == null) {
-            popupMenu = new JPopupMenu();
-            popupMenu.setBorder(new EmptyBorder(5, 5, 5, 5));
-            box.setComponentPopupMenu(popupMenu);
-        }
-
-        // Create reset menu
-        final JMenuItem reset = new JMenuItem("Reset ALL Mistakes for " + playerName);
-        reset.addActionListener(e -> {
-            mistakeStateManager.removeAllMistakesForPlayer(playerName);
-            playerMistakesBoxes.remove(box);
-
-            updateOverallPanel();
-            mistakesContainer.remove(box);
-            mistakesContainer.repaint();
-
-            if (playerMistakesBoxes.isEmpty()) {
-                updateVisiblePanels(true);
-            }
-        });
-
-        popupMenu.add(reset);
-
-        // Show main view
-        updateVisiblePanels(false);
-
-        // Add box to panel
-        mistakesContainer.add(box);
-        playerMistakesBoxes.add(box);
-
-        return box;
-    }
 
     void addSidePanel() {
         //Add the panels to the side plugin
