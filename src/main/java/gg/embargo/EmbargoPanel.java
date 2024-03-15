@@ -60,14 +60,13 @@ public class EmbargoPanel extends PluginPanel {
     private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
     private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
     private final JLabel currentCALabel = new JLabel(htmlLabel("Current TA Tier:", " N/A"));
-    private final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see which items", " you are missing for rank up"));
+    private final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
     private final Font smallFont = FontManager.getRunescapeSmallFont();
 
     @Inject
     private EmbargoPanel(ItemManager itemManager) {
         this.itemManager = itemManager;
     }
-
     private String htmlLabel(String key, String value)
     {
         return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value + "</span></body></html>";
@@ -136,30 +135,36 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     void setupMissingItemsPanel() {
-        final JLabel mistakeCountLabel;
-        final JPanel mistakesContainer = new JPanel();
-        final int ITEMS_PER_ROW = 5;
-
-        String nextRankTitle = "Missing Requirements For Next Rank";
-
+        //The dark black title for the panel
         final JPanel missingRequirementsTitle = new JPanel(new BorderLayout(5, 0));
         missingRequirementsTitle.setBorder(new EmptyBorder(7, 7, 7, 7));
-        missingRequirementsTitle.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
+        missingRequirementsTitle.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
         //Set up text inside of
-        final JLabel playerNameLabel = new JLabel(nextRankTitle); // "e.g Missing Requirements For Beast"
+        String nextRankTitle = "Missing Requirements For Next Rank";
+        final JLabel playerNameLabel = new JLabel(nextRankTitle, JLabel.LEFT); // "e.g Missing Requirements For Beast"
         playerNameLabel.setFont(FontManager.getRunescapeSmallFont());
         playerNameLabel.setForeground(Color.WHITE);
-        missingRequirementsTitle.add(playerNameLabel, BorderLayout.WEST);
+        playerNameLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
+
+        missingRequirementsTitle.add(playerNameLabel, BorderLayout.NORTH);
+        missingRequirementsTitle.setFont(FontManager.getRunescapeSmallFont());
+        missingRequirementsTitle.setForeground(Color.WHITE);
+        missingRequirementsTitle.add(missingRequirementsPanel);
 
         missingRequirementsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        missingRequirementsPanel.setBorder(new EmptyBorder(0, 10, 0, 10));
-        missingRequirementsPanel.setLayout(new GridLayout(0, 1));
+        missingRequirementsPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
+        missingRequirementsPanel.setLayout(new GridLayout(1, 1));
 
-        this.add(mistakesContainer, BorderLayout.CENTER);
-        this.add(missingRequirementsTitle, BorderLayout.CENTER);
+        missingRequiredItemsLabel.setFont(FontManager.getRunescapeSmallFont());
+        missingRequiredItemsLabel.setForeground(Color.WHITE);
+        missingRequiredItemsLabel.setHorizontalAlignment(JLabel.LEFT);
+
+        missingRequirementsPanel.add(missingRequiredItemsLabel, BorderLayout.NORTH);
+
+        //Push text to top of component
+        this.add(missingRequirementsTitle, BorderLayout.NORTH);
     }
-
 
     void addSidePanel() {
         //Add the panels to the side plugin
@@ -234,14 +239,24 @@ public class EmbargoPanel extends PluginPanel {
 
                     //Set Missing Gear Requirements Label to display missing gear
                     StringBuilder missingGearReqsString = new StringBuilder();
+                    missingGearReqsString.append("<html>");
                     for (int i = 0; i < missingGearReqs.size(); i++) {
-                        missingGearReqsString.append(missingGearReqs.get(i).getAsString());
-                        if (i != missingGearReqs.size() - 1) {
-                            missingGearReqsString.append(", ");
-                        }
+                        missingGearReqsString.append("<div>- ").append(missingGearReqs.get(i).getAsString()).append("</div>");
                     }
 
-                    missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements For Next Rank:", " " + missingGearReqsString.toString()));
+                    missingGearReqsString.append("<html>");
+
+                    //Build out the missing requirements panel
+                    if (missingGearReqs.size() > 0) {
+                        missingRequiredItemsLabel.setText(missingGearReqsString.toString());
+                        //append panel under missingRequiredItemsLabel
+                        missingRequiredItemsLabel.setForeground(Color.LIGHT_GRAY);
+                        missingRequirementsPanel.add(missingRequiredItemsLabel);
+                        
+                    } else {
+                        missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
+                    }
+
 
                     log.debug(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
                     log.debug(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
