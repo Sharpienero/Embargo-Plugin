@@ -281,8 +281,16 @@ public class EmbargoPanel extends PluginPanel {
 
                     currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
-                    //TODO - Iterate over missingGearReqs and create a small image to display what the user is missing.
-                    // Can use a few plugins to check this, but the ones that I recommend are Loot Tracker and Bossing Info
+                    //Set Missing Gear Requirements Label to display missing gear
+                    StringBuilder missingGearReqsString = new StringBuilder();
+                    for (int i = 0; i < missingGearReqs.size(); i++) {
+                        missingGearReqsString.append(missingGearReqs.get(i).getAsString());
+                        if (i != missingGearReqs.size() - 1) {
+                            missingGearReqsString.append(", ");
+                        }
+                    }
+
+                    missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements For Next Rank:", " " + missingGearReqsString.toString()));
 
                     log.debug(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
                     log.debug(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
