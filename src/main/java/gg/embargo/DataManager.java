@@ -77,7 +77,8 @@ public class DataManager {
          GET_PROFILE("getgear"),
          SUBMIT_LOOT("loot"),
          GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses"),
-         PREPARE_RAID("raid");
+         PREPARE_RAID("raid"),
+         UPLOAD_CLOG("collectionlog");
 
          APIRoutes(String route) {
              this.route = route;
@@ -99,6 +100,7 @@ public class DataManager {
     private static final String SUBMIT_LOOT_ENDPOINT = API_URI + APIRoutes.SUBMIT_LOOT;
     public static final String TRACK_MONSTERS_ENDPOINT = API_URI + APIRoutes.GET_RAID_MONSTERS_TO_TRACK_LOOT;
     public static final String PREPARE_RAID_ENDPOINT = API_URI + APIRoutes.PREPARE_RAID;
+    public static final String CLOG_UNLOCK_ENDPOINT = API_URI + APIRoutes.UPLOAD_CLOG;
 
     public static ArrayList BossesToTrack = null;
 
@@ -156,6 +158,31 @@ public class DataManager {
         return null;
     }
 
+    public void uploadCollectionLogUnlock(String item, String player)
+    {
+        JsonObject payload = getClogUploadPayload(item, player);
+        log.debug(String.valueOf(payload));
+
+        Request request = new Request.Builder()
+                .url(CLOG_UNLOCK_ENDPOINT)
+                .post(RequestBody.create(JSON, payload.toString()))
+                .build();
+
+        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
+                .callTimeout(5, TimeUnit.SECONDS)
+                .build();
+
+        try (Response response = shortTimeoutClient.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                log.debug("Successfully uploaded raid preparation");
+            } else {
+                log.error("Failed to check if user is registered.");
+            }
+        } catch (IOException ioException) {
+            log.error("Failed to check if user is registered.");
+        }
+    }
+
     public void uploadRaidCompletion(String raid, String message) {
         if (client == null || client.getLocalPlayer() == null) {
             return;
@@ -181,6 +208,16 @@ public class DataManager {
         } catch (IOException ioException) {
             log.error("Failed to check if user is registered.");
         }
+    }
+
+    private JsonObject getClogUploadPayload(String itemName, String username)
+    {
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("playerName", username);
+        payload.addProperty("itemName", itemName);
+
+        return payload;
     }
 
     @NonNull

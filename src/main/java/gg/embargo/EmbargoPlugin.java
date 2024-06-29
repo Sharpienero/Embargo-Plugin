@@ -18,6 +18,7 @@ import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
@@ -26,6 +27,8 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @PluginDescriptor(
@@ -73,6 +76,7 @@ public class EmbargoPlugin extends Plugin {
 	private final int SECONDS_BETWEEN_UPLOADS = 30;
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
+	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
 
 	private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
 
@@ -189,6 +193,13 @@ public class EmbargoPlugin extends Plugin {
 		if (player == null)
 		{
 			return;
+		}
+
+		//Point History generation for new collection log
+		Matcher m = COLLECTION_LOG_ITEM_REGEX.matcher(chatMessage.getMessage());
+		if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE && m.matches()) {
+			String obtainedItemName = Text.removeTags(m.group(1));
+			dataManager.uploadCollectionLogUnlock(obtainedItemName, player.getName());
 		}
 
 		if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE || chatMessage.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION || chatMessage.getType() == ChatMessageType.SPAM)
@@ -343,7 +354,7 @@ public class EmbargoPlugin extends Plugin {
 
             }
             untrackableItemManager.getUntrackableItems(username);
-            lastLootTime.put(username, LocalDateTime.now().plusMinutes(3));
+            lastLootTime.put(username, LocalDateTime.now().plusSeconds(4));
         }
 	}
 
