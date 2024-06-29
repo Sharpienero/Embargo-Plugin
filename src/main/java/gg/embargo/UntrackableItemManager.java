@@ -83,6 +83,8 @@ public class UntrackableItemManager {
                 RequestBody.add("itemIds[" + i + "]", String.valueOf(playerItems.get(i)));
             }
 
+            //Need to send profile type with this
+
             RequestBody.add("username", username);
 
             Request request = new Request.Builder()
@@ -107,7 +109,7 @@ public class UntrackableItemManager {
                     }
                 });
             } catch (IllegalArgumentException e) {
-                log.error("Bad URL given: " + e.getLocalizedMessage());
+                log.error("Bad URL given: {}", e.getLocalizedMessage());
             }
         }
     }
