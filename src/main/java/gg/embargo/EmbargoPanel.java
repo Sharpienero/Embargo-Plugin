@@ -46,7 +46,6 @@ public class EmbargoPanel extends PluginPanel {
     private final ArrayList<ItemID> items = new ArrayList<>();
     JPanel versionPanel = new JPanel();
     JPanel missingRequirementsPanel = new JPanel();
-    JPanel eventsPanel = new JPanel();
     private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
     private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
     static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
@@ -62,12 +61,8 @@ public class EmbargoPanel extends PluginPanel {
     private final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
     private final Font smallFont = FontManager.getRunescapeSmallFont();
     final JPanel missingRequirementsContainer = new JPanel(new BorderLayout(5, 0));
-    final JPanel eventsContainer = new JPanel(new BorderLayout(5, 0));
+
     final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
-    final JLabel eventPanelTitleLabel = new JLabel("Ongoing Events", JLabel.LEFT);
-
-    final JLabel currentEvent = new JLabel("", JLabel.LEFT);
-
     @Inject
     private EmbargoPanel(ItemManager itemManager) {
         this.itemManager = itemManager;
@@ -166,29 +161,10 @@ public class EmbargoPanel extends PluginPanel {
         this.add(missingRequirementsContainer, BorderLayout.NORTH);
     }
 
-    void setupEventsPanel() {
-        eventsContainer.setBorder(new EmptyBorder(7, 7, 7, 7));
-        eventsContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-
-        eventPanelTitleLabel.setFont(FontManager.getRunescapeSmallFont());
-        eventPanelTitleLabel.setForeground(Color.WHITE);
-        eventPanelTitleLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
-
-        eventsContainer.add(eventPanelTitleLabel, BorderLayout.NORTH);
-        eventsContainer.setFont(FontManager.getRunescapeSmallFont());
-        eventsContainer.setForeground(Color.WHITE);
-        eventsContainer.add(eventsPanel);
-
-        eventsPanel.add(eventPanelTitleLabel, BorderLayout.NORTH);
-
-        this.add(eventsContainer, BorderLayout.NORTH);
-    }
-
     void addSidePanel() {
         //Add the panels to the side plugin
         this.add(versionPanel, BorderLayout.NORTH);
         setupMissingItemsPanel();
-        setupEventsPanel();
         this.add(this.setUpQuickLinks(), BorderLayout.SOUTH);
 
     }
