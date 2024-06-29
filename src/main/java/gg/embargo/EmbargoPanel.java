@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.Item;
 import net.runelite.api.ItemID;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.game.ItemManager;
@@ -20,7 +19,6 @@ import net.runelite.client.util.LinkBrowser;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.*;
-import javax.swing.BoxLayout;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -60,12 +58,11 @@ public class EmbargoPanel extends PluginPanel {
     private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
     private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
     private final JLabel currentCALabel = new JLabel(htmlLabel("Current TA Tier:", " N/A"));
-    private JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+    private final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
     private final Font smallFont = FontManager.getRunescapeSmallFont();
     final JPanel missingRequirementsContainer = new JPanel(new BorderLayout(5, 0));
-    //Set up text inside ofs
-    final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
 
+    final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
     @Inject
     private EmbargoPanel(ItemManager itemManager) {
         this.itemManager = itemManager;
@@ -169,6 +166,7 @@ public class EmbargoPanel extends PluginPanel {
         this.add(versionPanel, BorderLayout.NORTH);
         setupMissingItemsPanel();
         this.add(this.setUpQuickLinks(), BorderLayout.SOUTH);
+
     }
 
     void setupSidePanel() {

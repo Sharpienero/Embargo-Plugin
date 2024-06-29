@@ -231,7 +231,7 @@ public class EmbargoPlugin extends Plugin {
 		if (client == null) return;
 
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
-		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null )
+		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null)
 		{
 			// profile change, we should clear the dataManager and do a new initial dump
 			log.debug("Profile seemed to change... Reloading all data and updating profile");
@@ -281,16 +281,16 @@ public class EmbargoPlugin extends Plugin {
 
 	public void loadInitialData()
 	{
-		for(int varbIndex : varbitsToCheck)
+		for (int varbIndex : varbitsToCheck)
 		{
 			dataManager.storeVarbitChanged(varbIndex, client.getVarbitValue(varbIndex));
 		}
 
-		for(int varpIndex : varpsToCheck)
+		for (int varpIndex : varpsToCheck)
 		{
 			dataManager.storeVarpChanged(varpIndex, client.getVarpValue(varpIndex));
 		}
-		for(Skill s : Skill.values())
+		for (Skill s : Skill.values())
 		{
 			dataManager.storeSkillChanged(s.getName(), client.getRealSkillLevel(s));
 		}
