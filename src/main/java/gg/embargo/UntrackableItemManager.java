@@ -83,8 +83,6 @@ public class UntrackableItemManager {
                 RequestBody.add("itemIds[" + i + "]", String.valueOf(playerItems.get(i)));
             }
 
-            //Need to send profile type with this
-
             RequestBody.add("username", username);
 
             Request request = new Request.Builder()

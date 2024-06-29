@@ -354,7 +354,7 @@ public class EmbargoPlugin extends Plugin {
 
             }
             untrackableItemManager.getUntrackableItems(username);
-            lastLootTime.put(username, LocalDateTime.now().plusSeconds(4));
+            lastLootTime.put(username, LocalDateTime.now().plusMinutes(3));
         }
 	}
 
