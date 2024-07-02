@@ -175,7 +175,11 @@ public class DataManager {
                 //Update what we want to track on the fly
                 if (response.isSuccessful()) {
                     log.debug("Successfully uploaded new collection log slot");
+                    response.close();
+                    return;
                 }
+
+                response.close();
             }
         });
     }
