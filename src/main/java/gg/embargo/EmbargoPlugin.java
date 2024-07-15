@@ -143,6 +143,7 @@ public class EmbargoPlugin extends Plugin {
 			}
 		} else {
 			log.debug("User is hopping or logged out, do not send data");
+			panel.logOut();
 		}
 	}
 
