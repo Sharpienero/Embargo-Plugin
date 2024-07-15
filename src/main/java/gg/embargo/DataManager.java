@@ -163,24 +163,25 @@ public class DataManager {
         JsonObject payload = getClogUploadPayload(item, player);
         log.debug(String.valueOf(payload));
 
-        Request request = new Request.Builder()
-                .url(CLOG_UNLOCK_ENDPOINT)
-                .post(RequestBody.create(JSON, payload.toString()))
-                .build();
-
-        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
-                .callTimeout(5, TimeUnit.SECONDS)
-                .build();
-
-        try (Response response = shortTimeoutClient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                log.debug("Successfully uploaded raid preparation");
-            } else {
-                log.error("Failed to check if user is registered.");
+        okHttpClient.newCall(new Request.Builder().url(CLOG_UNLOCK_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                log.debug("Failed to upload new clog slot to Embargo");
+                e.printStackTrace();
             }
-        } catch (IOException ioException) {
-            log.error("Failed to check if user is registered.");
-        }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                //Update what we want to track on the fly
+                if (response.isSuccessful()) {
+                    log.debug("Successfully uploaded new collection log slot");
+                    response.close();
+                    return;
+                }
+
+                response.close();
+            }
+        });
     }
 
     public void uploadRaidCompletion(String raid, String message) {
@@ -189,25 +190,20 @@ public class DataManager {
         }
 
         JsonObject payload = getRaidCompletionPayload(raid, message);
-
-        Request request = new Request.Builder()
-                .url(PREPARE_RAID_ENDPOINT)
-                .post(RequestBody.create(JSON, payload.toString()))
-                .build();
-
-        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
-                .callTimeout(5, TimeUnit.SECONDS)
-                .build();
-
-        try (Response response = shortTimeoutClient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                log.debug("Successfully uploaded raid preparation");
-            } else {
-                log.error("Failed to check if user is registered.");
+        okHttpClient.newCall(new Request.Builder().url(PREPARE_RAID_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                log.debug("Failed to upload upload raid completion");
+                e.printStackTrace();
             }
-        } catch (IOException ioException) {
-            log.error("Failed to check if user is registered.");
-        }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    log.debug("Successfully uploaded raid preparation");
+                }
+            }
+        });
     }
 
     private JsonObject getClogUploadPayload(String itemName, String username)
@@ -490,11 +486,11 @@ public class DataManager {
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 // If we failed to submit, read the data to the data lists (unless there are newer ones)
-                log.error("Failed to submit data, attempting to reload dropped data...");
+                log.error("[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
                 this.restoreData(postRequestBody);
             }
         } catch (IOException ioException) {
-            log.error("Failed to submit data, attempting to reload dropped data...");
+            log.error("[submitToAPI IOException: 496] Failed to submit data, attempting to reload dropped data");
             this.restoreData(postRequestBody);
         }
     }

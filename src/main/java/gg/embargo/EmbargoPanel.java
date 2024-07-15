@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ItemID;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -24,6 +23,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.Objects;
 
 @Slf4j
 public class EmbargoPanel extends PluginPanel {
@@ -39,8 +39,6 @@ public class EmbargoPanel extends PluginPanel {
     @Setter
     public boolean isLoggedIn = false;
 
-    @Inject
-    private ItemManager itemManager;
 
     // Keep track of all boxes
     private final ArrayList<ItemID> items = new ArrayList<>();
@@ -64,9 +62,9 @@ public class EmbargoPanel extends PluginPanel {
 
     final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
     @Inject
-    private EmbargoPanel(ItemManager itemManager) {
-        this.itemManager = itemManager;
+    private EmbargoPanel() {
     }
+
     private String htmlLabel(String key, String value)
     {
         return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value + "</span></body></html>";
@@ -74,7 +72,7 @@ public class EmbargoPanel extends PluginPanel {
 
     void setupVersionPanel() {
         //Set up Embargo Clan Version at top of Version panel
-        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.1.1"));
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.2.0"));
         version.setFont(smallFont);
 
         //Set version's font
@@ -122,7 +120,7 @@ public class EmbargoPanel extends PluginPanel {
         versionPanel.add(currentCALabel);
     }
 
-    javax.swing.JPanel setUpQuickLinks() {
+    JPanel setUpQuickLinks() {
         JPanel actionsContainer = new JPanel();
         actionsContainer.setBorder(new EmptyBorder(10, 0, 0, 0));
         actionsContainer.setLayout(new GridLayout(0, 1, 0, 10));
@@ -207,6 +205,7 @@ public class EmbargoPanel extends PluginPanel {
 
                     //get gear
                     var embargoProfileData = dataManager.getProfile(username);
+
                     JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
 
                     JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
@@ -250,11 +249,6 @@ public class EmbargoPanel extends PluginPanel {
                     } else {
                         missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
                     }
-
-
-                    log.debug(username + " currently has " + currentAccountPoints + " account points and " + currentCommunityPoints + " community points.\n");
-                    log.debug(username + " is currently rank " + currentRankName + ".\nThe next rank is: " + nextRankName + "\nThey need missing the following gear: " + missingGearReqs.toString());
-                    log.debug(username + " currently has " + getCurrentCAName);
                 } else {
                     emailLabel.setText("Account not registered with Embargo");
                 }
@@ -263,7 +257,7 @@ public class EmbargoPanel extends PluginPanel {
                 this.logOut();
             }
         } else {
-            logOut();
+            this.logOut();
         }
     }
 

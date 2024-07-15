@@ -80,6 +80,8 @@ public class EmbargoPlugin extends Plugin {
 
 	private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
 
+	private final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
+
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager)
 	{
@@ -141,6 +143,7 @@ public class EmbargoPlugin extends Plugin {
 			}
 		} else {
 			log.debug("User is hopping or logged out, do not send data");
+			panel.logOut();
 		}
 	}
 
@@ -158,14 +161,16 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	@Subscribe
-	public void onGameTick(GameTick gameTick)
-	{
-		if (!panel.isLoggedIn && client.getLocalPlayer() != null) {
-			panel.updateLoggedIn(false);
+	@Schedule(
+		period = SECONDS_BETWEEN_PROFILE_UPDATES,
+		unit = ChronoUnit.SECONDS,
+		asynchronous = true
+	)
+	public void checkProfileChanged() {
+		if (client.getLocalPlayer() != null && client.getGameState() == GameState.LOGGED_IN) {
+			panel.updateLoggedIn(true);
+			clientThread.invokeLater(this::checkProfileChange);
 		}
-		// Call a helper function since it needs to be called from DataManager as well
-		checkProfileChange();
 	}
 
 	@Getter
@@ -218,11 +223,24 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
-		if (event.getGameState() == GameState.LOGIN_SCREEN)
-		{
+		log.debug("Inside of onGameStateChanged");
+		if (event.getGameState() == GameState.LOGGED_IN) {
+
+			clientThread.invokeLater(() -> {
+				if (client.getLocalPlayer().getName() == null) return false;
+
+				panel.isLoggedIn = true;
+				panel.updateLoggedIn(true);
+				return true;
+			});
+
+		} else {
 			log.info("Resetting Embargo Side Panel");
-			panel.isLoggedIn = false;
-			panel.logOut();
+
+			clientThread.invokeLater(() -> {
+				panel.isLoggedIn = false;
+				panel.logOut();
+			});
 		}
 	}
 
@@ -354,7 +372,7 @@ public class EmbargoPlugin extends Plugin {
 
             }
             untrackableItemManager.getUntrackableItems(username);
-            lastLootTime.put(username, LocalDateTime.now().plusSeconds(4));
+            lastLootTime.put(username, LocalDateTime.now().plusMinutes(3));
         }
 	}
 
