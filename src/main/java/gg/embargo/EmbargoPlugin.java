@@ -225,9 +225,13 @@ public class EmbargoPlugin extends Plugin {
 	{
 		log.debug("Inside of onGameStateChanged");
 		if (event.getGameState() == GameState.LOGGED_IN) {
+
 			clientThread.invokeLater(() -> {
+				if (client.getLocalPlayer().getName() == null) return false;
+
 				panel.isLoggedIn = true;
 				panel.updateLoggedIn(true);
+				return true;
 			});
 
 		} else {
