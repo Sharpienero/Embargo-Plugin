@@ -486,11 +486,11 @@ public class DataManager {
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 // If we failed to submit, read the data to the data lists (unless there are newer ones)
-                log.error("Failed to submit data, attempting to reload dropped data...");
+                log.error("[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
                 this.restoreData(postRequestBody);
             }
         } catch (IOException ioException) {
-            log.error("Failed to submit data, attempting to reload dropped data...");
+            log.error("[submitToAPI IOException: 496] Failed to submit data, attempting to reload dropped data");
             this.restoreData(postRequestBody);
         }
     }
