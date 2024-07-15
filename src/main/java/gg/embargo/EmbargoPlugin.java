@@ -166,7 +166,7 @@ public class EmbargoPlugin extends Plugin {
 		asynchronous = true
 	)
 	public void checkProfileChanged() {
-		if (client.getLocalPlayer() != null) {
+		if (client.getLocalPlayer() != null && client.getGameState() == GameState.LOGGED_IN) {
 			panel.updateLoggedIn(true);
 			clientThread.invokeLater(this::checkProfileChange);
 		}
