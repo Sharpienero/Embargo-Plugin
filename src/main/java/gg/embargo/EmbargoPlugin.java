@@ -202,8 +202,8 @@ public class EmbargoPlugin extends Plugin {
 
 		//Point History generation for new collection log
 		Matcher m = COLLECTION_LOG_ITEM_REGEX.matcher(chatMessage.getMessage());
-		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
-		if (r == RuneScapeProfileType.STANDARD && chatMessage.getType() == ChatMessageType.GAMEMESSAGE && m.matches()) {
+		RuneScapeProfileType profType = RuneScapeProfileType.getCurrent(client);
+		if (profType == RuneScapeProfileType.STANDARD && chatMessage.getType() == ChatMessageType.GAMEMESSAGE && m.matches()) {
 			String obtainedItemName = Text.removeTags(m.group(1));
 			dataManager.uploadCollectionLogUnlock(obtainedItemName, player.getName());
 		}
