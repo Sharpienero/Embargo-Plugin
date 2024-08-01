@@ -222,25 +222,24 @@ public class EmbargoPlugin extends Plugin {
 	}
 
 	@Subscribe
-	public void onGameStateChanged(GameStateChanged event)
-	{
-		log.debug("Inside of onGameStateChanged");
-		if (event.getGameState() == GameState.LOGGED_IN) {
+	public void onGameStateChanged(GameStateChanged event) {
+		if (event.getGameState() == GameState.LOADING) {
+			return;
+		}
 
+		if (event.getGameState() == GameState.LOGIN_SCREEN) {
+			panel.isLoggedIn = false;
+			panel.logOut();
+			return;
+		}
+
+		if (client != null && client.getLocalPlayer().getName() == null && event.getGameState() == GameState.LOGGED_IN) {
 			clientThread.invokeLater(() -> {
 				if (client.getLocalPlayer().getName() == null) return false;
 
 				panel.isLoggedIn = true;
 				panel.updateLoggedIn(true);
 				return true;
-			});
-
-		} else {
-			log.info("Resetting Embargo Side Panel");
-
-			clientThread.invokeLater(() -> {
-				panel.isLoggedIn = false;
-				panel.logOut();
 			});
 		}
 	}
