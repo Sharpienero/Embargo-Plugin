@@ -21,7 +21,6 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
-import net.runelite.client.menus.MenuManager;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
@@ -55,9 +54,6 @@ public class EmbargoPlugin extends Plugin {
 	@Inject
 	static EmbargoConfig config;
 
-	@Inject
-	private MenuManager menuManager;
-
 	@Getter
 	@Setter
 	private int lastManifestVersion = -1;
@@ -87,7 +83,6 @@ public class EmbargoPlugin extends Plugin {
 	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
 	private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
 	private final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
-	private final String LOOKUP_OPTION = "Embargo Lookup";
 	private final String CONFIG_GROUP = "embargo";
 
 
@@ -122,11 +117,8 @@ public class EmbargoPlugin extends Plugin {
 		dataManager.getManifest();
 		panel.updateLoggedIn(false);
 
-		//
-		NoticeBoardManager.setNoticeBoard();
-		if (config.addEmbargoProfileOption())
-		{
-			menuManager.addPlayerMenuItem("Embargo Profile");
+		if (config.highlightClan()) {
+			NoticeBoardManager.setNoticeBoard();
 		}
 	}
 
@@ -426,12 +418,6 @@ public class EmbargoPlugin extends Plugin {
 		if (!event.getGroup().equals(CONFIG_GROUP))
 		{
 			return;
-		}
-
-		menuManager.removePlayerMenuItem(LOOKUP_OPTION);
-		if (config.addEmbargoProfileOption())
-		{
-			menuManager.addPlayerMenuItem(LOOKUP_OPTION);
 		}
 
 		NoticeBoardManager.unsetNoticeBoard();
