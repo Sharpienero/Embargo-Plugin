@@ -1,3 +1,10 @@
+/*
+Almost all of this code was taken from the tob-notice-board plugin by Broooklyn
+https://github.com/Broooklyn/runelite-external-plugins/tree/tob-notice-board
+Slight modifications were made to work with clans
+ */
+
+
 package gg.embargo;
 
 import com.google.inject.Provides;
@@ -17,12 +24,6 @@ public class NoticeBoardManager {
     static EmbargoConfig config;
 
     private static final int DEFAULT_RGB = 0xff981f;
-
-    @Provides
-    EmbargoConfig getConfig(ConfigManager configManager)
-    {
-        return configManager.getConfig(EmbargoConfig.class);
-    }
 
     private static void setNameColors(int clanColor) {
         for (int childID = 17; childID < 62; ++childID) {

@@ -117,7 +117,7 @@ public class EmbargoPlugin extends Plugin {
 		dataManager.getManifest();
 		panel.updateLoggedIn(false);
 
-		if (config.highlightClan()) {
+		if (config != null && config.highlightClan()) {
 			NoticeBoardManager.setNoticeBoard();
 		}
 	}
@@ -248,6 +248,9 @@ public class EmbargoPlugin extends Plugin {
 
 				panel.isLoggedIn = true;
 				panel.updateLoggedIn(true);
+				if (config != null && config.highlightClan()) {
+					NoticeBoardManager.setNoticeBoard();
+				}
 				return true;
 			});
 		}
