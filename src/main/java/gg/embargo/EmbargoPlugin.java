@@ -11,6 +11,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
@@ -50,6 +51,12 @@ public class EmbargoPlugin extends Plugin {
 	@Inject
 	private Client client;
 
+	@Inject
+	private EmbargoConfig config;
+
+	@Inject
+	private NoticeBoardManager noticeBoardManager;
+
 	@Getter
 	@Setter
 	private int lastManifestVersion = -1;
@@ -77,10 +84,10 @@ public class EmbargoPlugin extends Plugin {
 	private final int SECONDS_BETWEEN_MANIFEST_CHECKS = 5*60;
 	private final int VARBITS_ARCHIVE_ID = 14;
 	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
-
 	private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
-
 	private final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
+	private final String CONFIG_GROUP = "embargo";
+
 
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager)
@@ -112,6 +119,11 @@ public class EmbargoPlugin extends Plugin {
 		skillLevelCache.clear();
 		dataManager.getManifest();
 		panel.updateLoggedIn(false);
+
+		if (config != null && config.highlightClan()) {
+			noticeBoardManager.setTOBNoticeBoard();
+			noticeBoardManager.setTOANoticeBoard();
+		}
 	}
 
 	@Override
@@ -124,6 +136,7 @@ public class EmbargoPlugin extends Plugin {
 		navButton = null;
 
 		checkProfileChange();
+		noticeBoardManager.unsetNoticeBoard();
 	}
 	@Schedule(
 			period = SECONDS_BETWEEN_UPLOADS,
@@ -239,6 +252,10 @@ public class EmbargoPlugin extends Plugin {
 
 				panel.isLoggedIn = true;
 				panel.updateLoggedIn(true);
+				if (config != null && config.highlightClan()) {
+					noticeBoardManager.setTOBNoticeBoard();
+					noticeBoardManager.setTOANoticeBoard();
+				}
 				return true;
 			});
 		}
@@ -391,4 +408,39 @@ public class EmbargoPlugin extends Plugin {
 			log.debug("Player killed " + event.getName() + " , nothing to log");
 		}
 	}
+
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+	{
+		clientThread.invokeLater(() ->
+		{
+			// TOB
+			if (widgetLoaded.getGroupId() == 364 || widgetLoaded.getGroupId() == 50)
+			{
+				noticeBoardManager.setTOBNoticeBoard();
+			}
+
+			// TOA
+			if (widgetLoaded.getGroupId() == 772 || widgetLoaded.getGroupId() == 774) {
+				noticeBoardManager.setTOANoticeBoard();
+			}
+
+
+		});
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event) {
+		if (!event.getGroup().equals(CONFIG_GROUP))
+		{
+			return;
+		}
+
+		noticeBoardManager.unsetNoticeBoard();
+		if (config.highlightClan()) {
+			noticeBoardManager.setTOBNoticeBoard();
+			noticeBoardManager.setTOANoticeBoard();
+		}
+	}
+
 }
