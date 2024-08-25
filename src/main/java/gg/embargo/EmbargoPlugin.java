@@ -52,7 +52,10 @@ public class EmbargoPlugin extends Plugin {
 	private Client client;
 
 	@Inject
-	static EmbargoConfig config;
+	private EmbargoConfig config;
+
+	@Inject
+	private NoticeBoardManager noticeBoardManager;
 
 	@Getter
 	@Setter
@@ -118,7 +121,8 @@ public class EmbargoPlugin extends Plugin {
 		panel.updateLoggedIn(false);
 
 		if (config != null && config.highlightClan()) {
-			NoticeBoardManager.setNoticeBoard();
+			noticeBoardManager.setTOBNoticeBoard();
+			noticeBoardManager.setTOANoticeBoard();
 		}
 	}
 
@@ -132,7 +136,7 @@ public class EmbargoPlugin extends Plugin {
 		navButton = null;
 
 		checkProfileChange();
-		NoticeBoardManager.unsetNoticeBoard();
+		noticeBoardManager.unsetNoticeBoard();
 	}
 	@Schedule(
 			period = SECONDS_BETWEEN_UPLOADS,
@@ -249,7 +253,8 @@ public class EmbargoPlugin extends Plugin {
 				panel.isLoggedIn = true;
 				panel.updateLoggedIn(true);
 				if (config != null && config.highlightClan()) {
-					NoticeBoardManager.setNoticeBoard();
+					noticeBoardManager.setTOBNoticeBoard();
+					noticeBoardManager.setTOANoticeBoard();
 				}
 				return true;
 			});
@@ -409,10 +414,18 @@ public class EmbargoPlugin extends Plugin {
 	{
 		clientThread.invokeLater(() ->
 		{
-			if (widgetLoaded.getGroupId() == 364)
+			// TOB
+			if (widgetLoaded.getGroupId() == 364 || widgetLoaded.getGroupId() == 50)
 			{
-				NoticeBoardManager.setNoticeBoard();
+				noticeBoardManager.setTOBNoticeBoard();
 			}
+
+			// TOA
+			if (widgetLoaded.getGroupId() == 772 || widgetLoaded.getGroupId() == 774) {
+				noticeBoardManager.setTOANoticeBoard();
+			}
+
+
 		});
 	}
 
@@ -423,9 +436,10 @@ public class EmbargoPlugin extends Plugin {
 			return;
 		}
 
-		NoticeBoardManager.unsetNoticeBoard();
+		noticeBoardManager.unsetNoticeBoard();
 		if (config.highlightClan()) {
-			NoticeBoardManager.setNoticeBoard();
+			noticeBoardManager.setTOBNoticeBoard();
+			noticeBoardManager.setTOANoticeBoard();
 		}
 	}
 

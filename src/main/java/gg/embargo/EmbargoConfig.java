@@ -12,19 +12,19 @@ public interface EmbargoConfig extends Config
 {
 
     @ConfigSection(
-            name = "TOB Notice Board",
-            description = "Section that houses TOB Notice Board settings",
+            name = "Raid Notice Boards",
+            description = "Section that houses Notice Board options",
             position = 1
     )
-    String tobNoticeBoardSettings = "tobNoticeBoardSettings";
+    String noticeBoardSettings = "NoticeBoardSettings";
 
 
     @ConfigItem(
             keyName = "highlightClan",
-            name = "Highlight Embargo Members?",
-            description = "Whether or not to highlight clan chat members' names on the notice board",
+            name = "Highlight Embargo Members",
+            description = "Whether or not to highlight clan chat members' names on notice boards (ToA, Tob)",
             position = 1,
-            section = tobNoticeBoardSettings
+            section = noticeBoardSettings
     )
     default boolean highlightClan()
     {
@@ -36,7 +36,7 @@ public interface EmbargoConfig extends Config
             name = "Highlight Color",
             description = "The color with which to highlight names from your current clan chat",
             position = 2,
-            section = tobNoticeBoardSettings
+            section = noticeBoardSettings
     )
     default Color clanColor()
     {
