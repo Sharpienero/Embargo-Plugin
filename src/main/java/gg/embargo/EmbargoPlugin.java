@@ -187,6 +187,22 @@ public class EmbargoPlugin extends Plugin {
 	}
 
 	@Getter
+	public enum MinigameCompletionMessages {
+		WINTERTODT("Your subdued Wintertodt count is:"),
+		TEMPOROSS("Your Tempoross kill count is:"),
+		GOTR("Amount of rifts you have closed:"),
+		SOUL_WARS("Zeal Tokens to spend"),
+		BARBARIAN_ASSAULT("Game finished, duration:"),
+		VOLCANIC_MINE("Your fragments disintegrate");
+
+		private final String completionMessage;
+
+		MinigameCompletionMessages(String completionMessage) {
+			this.completionMessage = completionMessage;
+		}
+	}
+
+	@Getter
 	public enum RaidCompletionMessages {
 		COX("Congratulations - your raid is complete!"),
 		COX_CM("Your completed Chambers of Xeric Challenge Mode count is:"),
@@ -221,15 +237,27 @@ public class EmbargoPlugin extends Plugin {
 			dataManager.uploadCollectionLogUnlock(obtainedItemName, player.getName());
 		}
 
-		if (chatMessage.getType() == ChatMessageType.GAMEMESSAGE || chatMessage.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION || chatMessage.getType() == ChatMessageType.SPAM)
+		if (profType == RuneScapeProfileType.STANDARD && (chatMessage.getType() == ChatMessageType.GAMEMESSAGE || chatMessage.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION || chatMessage.getType() == ChatMessageType.SPAM))
 		{
 			String message = chatMessage.getMessage();
-			for (RaidCompletionMessages r : RaidCompletionMessages.values())
+			handleActivityCompletion(message);
+		}
+	}
+
+	public void handleActivityCompletion(String chatMessage) {
+		for (RaidCompletionMessages r : RaidCompletionMessages.values())
+		{
+			if (chatMessage.contains(r.getCompletionMessage()))
 			{
-				if (message.contains(r.getCompletionMessage()))
-				{
-					dataManager.uploadRaidCompletion(r.name(), message);
-				}
+				dataManager.uploadRaidCompletion(r.name(), chatMessage);
+			}
+		}
+
+		for (MinigameCompletionMessages mg : MinigameCompletionMessages.values())
+		{
+			if (chatMessage.contains(mg.getCompletionMessage()))
+			{
+				dataManager.uploadMinigameCompletion(mg.name(), chatMessage);
 			}
 		}
 	}
