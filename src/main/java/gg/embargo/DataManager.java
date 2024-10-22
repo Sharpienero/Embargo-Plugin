@@ -78,7 +78,8 @@ public class DataManager {
          SUBMIT_LOOT("loot"),
          GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses"),
          PREPARE_RAID("raid"),
-         UPLOAD_CLOG("collectionlog");
+         UPLOAD_CLOG("collectionlog"),
+         MINIGAME_COMPLETE("minigame");
 
          APIRoutes(String route) {
              this.route = route;
@@ -98,9 +99,10 @@ public class DataManager {
     private static final String CHECK_REGISTRATION_ENDPOINT = API_URI + APIRoutes.CHECKREGISTRATION;
     private static final String GET_PROFILE_ENDPOINT = API_URI + APIRoutes.GET_PROFILE;
     private static final String SUBMIT_LOOT_ENDPOINT = API_URI + APIRoutes.SUBMIT_LOOT;
-    public static final String TRACK_MONSTERS_ENDPOINT = API_URI + APIRoutes.GET_RAID_MONSTERS_TO_TRACK_LOOT;
-    public static final String PREPARE_RAID_ENDPOINT = API_URI + APIRoutes.PREPARE_RAID;
-    public static final String CLOG_UNLOCK_ENDPOINT = API_URI + APIRoutes.UPLOAD_CLOG;
+    private static final String TRACK_MONSTERS_ENDPOINT = API_URI + APIRoutes.GET_RAID_MONSTERS_TO_TRACK_LOOT;
+    private static final String PREPARE_RAID_ENDPOINT = API_URI + APIRoutes.PREPARE_RAID;
+    private static final String MINIGAME_COMPLETION_ENDPOINT = API_URI + APIRoutes.MINIGAME_COMPLETE;
+    private static final String CLOG_UNLOCK_ENDPOINT = API_URI + APIRoutes.UPLOAD_CLOG;
 
     public static ArrayList BossesToTrack = null;
 
@@ -110,7 +112,7 @@ public class DataManager {
         }
     }
 
-    public List<Player> getRaidMembers() {
+    public List<Player> getSurroundingPlayers() {
         return client.getPlayers();
     }
 
@@ -206,6 +208,28 @@ public class DataManager {
         });
     }
 
+    public void uploadMinigameCompletion(String minigameName, String message) {
+        if (client == null || client.getLocalPlayer() == null) {
+            return;
+        }
+
+        JsonObject payload = getMinigamePayload(minigameName, message);
+        okHttpClient.newCall(new Request.Builder().url(MINIGAME_COMPLETION_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                log.debug("Failed to upload upload minigame completion");
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    log.debug("Successfully uploaded minigame preparation");
+                }
+            }
+        });
+    }
+
     private JsonObject getClogUploadPayload(String itemName, String username)
     {
 
@@ -217,9 +241,32 @@ public class DataManager {
     }
 
     @NonNull
+    private JsonObject getMinigamePayload(String minigame, String message) {
+        var user = client.getLocalPlayer().getName();
+        var world = client.getWorld();
+        List<Player> players = getSurroundingPlayers();
+
+        //convert List<Player> to JSON
+        JsonArray playersJson = new JsonArray();
+        for (Player player : players) {
+            JsonObject playerJson = new JsonObject();
+            playerJson.addProperty("name", player.getName());
+            playersJson.add(playerJson);
+        }
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("minigame", minigame);
+        payload.addProperty("world", world);
+        payload.addProperty("message", message);
+        payload.addProperty("user", user);
+        payload.add("players", playersJson);
+        return payload;
+    }
+
+    @NonNull
     private JsonObject getRaidCompletionPayload(String raid, String message) {
         var user = client.getLocalPlayer().getName();
-        List<Player> players = getRaidMembers();
+        List<Player> players = getSurroundingPlayers();
 
         //convert List<Player> to JSON
         JsonArray playersJson = new JsonArray();
@@ -323,7 +370,7 @@ public class DataManager {
         Collection<ItemStack> itemStacks = event.getItems();
 
         var user = client.getLocalPlayer().getName();
-        List<Player> players = getRaidMembers();
+        List<Player> players = getSurroundingPlayers();
 
         //convert List<Player> to JSON
         JsonArray playersJson = new JsonArray();
