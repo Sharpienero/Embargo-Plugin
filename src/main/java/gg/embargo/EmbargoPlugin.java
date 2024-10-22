@@ -188,12 +188,12 @@ public class EmbargoPlugin extends Plugin {
 
 	@Getter
 	public enum MinigameCompletionMessages {
-		WINTERTODT("Your subdued Wintertodt count is:"),
+		WINTERTODT("Your subdued Wintertodt count is:"), //g
 		TEMPOROSS("Your Tempoross kill count is:"),
 		GOTR("Amount of rifts you have closed:"),
-		SOUL_WARS("Zeal Tokens to spend"),
-		BARBARIAN_ASSAULT("Game finished, duration:"),
-		VOLCANIC_MINE("Your fragments disintegrate");
+		SOUL_WARS("team has defeated the Avatar"),
+		BARBARIAN_ASSAULT("Wave 10 duration"),
+		VOLCANIC_MINE("Your fragments disintegrate"); //g
 
 		private final String completionMessage;
 
