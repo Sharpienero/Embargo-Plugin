@@ -139,8 +139,7 @@ public class DataManager {
         okHttpClient.newCall(new Request.Builder().url(TRACK_MONSTERS_ENDPOINT).build()).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.debug("Failed to get raid boss list");
-                e.printStackTrace();
+                log.debug("Failed to get raid boss list", e);
             }
 
             @Override
@@ -168,8 +167,7 @@ public class DataManager {
         okHttpClient.newCall(new Request.Builder().url(CLOG_UNLOCK_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.debug("Failed to upload new clog slot to Embargo");
-                e.printStackTrace();
+                log.debug("Failed to upload new clog slot to Embargo", e);
             }
 
             @Override
@@ -195,8 +193,7 @@ public class DataManager {
         okHttpClient.newCall(new Request.Builder().url(PREPARE_RAID_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.debug("Failed to upload upload raid completion");
-                e.printStackTrace();
+                log.debug("Failed to upload upload raid completion", e);
             }
 
             @Override
@@ -217,8 +214,7 @@ public class DataManager {
         okHttpClient.newCall(new Request.Builder().url(MINIGAME_COMPLETION_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.debug("Failed to upload upload minigame completion");
-                e.printStackTrace();
+                log.debug("Failed to upload upload minigame completion", e);
             }
 
             @Override
