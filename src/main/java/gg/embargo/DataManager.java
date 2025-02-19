@@ -513,26 +513,21 @@ public class DataManager {
 
         log.debug("Submitting changed data to endpoint...");
         JsonObject postRequestBody = convertToJson();
-        Request request = new Request.Builder()
-                .url(UNTRACKABLE_POST_ENDPOINT)
-                .post(RequestBody.create(JSON, postRequestBody.toString()))
-                .build();
 
-        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
-                .callTimeout(5, TimeUnit.SECONDS)
-                .build();
-        try (Response response = shortTimeoutClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                // If we failed to submit, read the data to the data lists (unless there are
-                // newer ones)
-                log.error(
-                        "[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
-                this.restoreData(postRequestBody);
+        executeWithRetry(() -> {
+            Request request = new Request.Builder()
+                    .url(UNTRACKABLE_POST_ENDPOINT)
+                    .post(RequestBody.create(JSON, postRequestBody.toString()))
+                    .build();
+
+            try (Response response = shortTimeoutClient.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    log.error("Failed to submit data, attempting to reload dropped data");
+                    this.restoreData(postRequestBody);
+                }
+                return null;
             }
-        } catch (IOException ioException) {
-            log.error("[submitToAPI IOException: 496] Failed to submit data, attempting to reload dropped data");
-            this.restoreData(postRequestBody);
-        }
+        }, 3);
     }
 
     private HashSet<Integer> parseSet(JsonArray j) {
@@ -560,8 +555,7 @@ public class DataManager {
                     if (response.isSuccessful()) {
                         try {
                             // We want to be able to change the varbs and varps we get on the fly. To do so,
-                            // we tell
-                            // the client what to send the server on startup via the manifest.
+                            // we tell the client what to send the server on startup via the manifest.
                             if (response.body() == null) {
                                 log.error("Manifest request succeeded but returned empty body");
                                 response.close();
