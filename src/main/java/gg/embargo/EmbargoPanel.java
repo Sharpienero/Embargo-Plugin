@@ -74,6 +74,8 @@ public class EmbargoPanel extends PluginPanel {
         initializeDiscordButton();
     }
 
+
+
     private void initializeVersionPanel() {
         versionPanel.setLayout(new GridLayout(0, 1));
         versionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));

@@ -45,6 +45,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Singleton
@@ -125,7 +126,7 @@ public class DataManager {
     }
 
     public List<Player> getSurroundingPlayers() {
-        return new ArrayList<>(client.getTopLevelWorldView().players().stream().toList());
+        return client.getTopLevelWorldView().players().stream().collect(Collectors.toList());
     }
 
     public boolean shouldTrackLoot(String bossName) {
@@ -427,13 +428,25 @@ public class DataManager {
         }
     }
 
-    private <K, V> HashMap<K, V> clearChanges(HashMap<K, V> h) {
+    private <K, V> HashMap<K, V> clearVarChanges(ConcurrentHashMap<Integer, Integer> h) {
         HashMap<K, V> temp;
         synchronized (this) {
             if (h.isEmpty()) {
                 return new HashMap<>();
             }
-            temp = new HashMap<>(h);
+            temp = (HashMap<K, V>) new HashMap<>(h);
+            h.clear();
+        }
+        return temp;
+    }
+
+    private <K, V> HashMap<K, V> clearLevelChanges(ConcurrentHashMap<String, Integer> h) {
+        HashMap<K, V> temp;
+        synchronized (this) {
+            if (h.isEmpty()) {
+                return new HashMap<>();
+            }
+            temp = (HashMap<K, V>) new HashMap<>(h);
             h.clear();
         }
         return temp;
@@ -458,9 +471,9 @@ public class DataManager {
         // changes
         synchronized (this) {
             RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
-            HashMap<Integer, Integer> tempVarbData = clearChanges(varbData);
-            HashMap<Integer, Integer> tempVarpData = clearChanges(varpData);
-            HashMap<String, Integer> tempLevelData = clearChanges(levelData);
+            HashMap<Integer, Integer> tempVarbData = clearVarChanges(varbData);
+            HashMap<Integer, Integer> tempVarpData = clearVarChanges(varpData);
+            HashMap<String, Integer> tempLevelData = clearLevelChanges(levelData);
 
             j.add("varb", gson.toJsonTree(tempVarbData));
             j.add("varp", gson.toJsonTree(tempVarpData));

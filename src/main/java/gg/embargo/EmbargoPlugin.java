@@ -97,7 +97,6 @@ public class EmbargoPlugin extends Plugin {
 
 		// Let's build out the side panels
 		panel = injector.getInstance(EmbargoPanel.class);
-		panel.init();
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
 
 		navButton = NavigationButton.builder()
@@ -126,7 +125,6 @@ public class EmbargoPlugin extends Plugin {
 	protected void shutDown() {
 		log.info("Embargo Clan plugin stopped!");
 		dataManager.clearData();
-		panel.reset();
 		clientToolbar.removeNavigation(navButton);
 		panel = null;
 		navButton = null;
@@ -149,7 +147,7 @@ public class EmbargoPlugin extends Plugin {
 			}
 		} else {
 			log.debug("User is hopping or logged out, do not send data");
-			panel.logOut();
+			panel.updateLoggedIn(false);
 		}
 	}
 
@@ -248,8 +246,8 @@ public class EmbargoPlugin extends Plugin {
 		}
 
 		if (event.getGameState() == GameState.LOGIN_SCREEN) {
-			panel.isLoggedIn = false;
-			panel.logOut();
+			panel.updateLoggedIn(false);
+			noticeBoardManager.unsetNoticeBoard();
 			return;
 		}
 
@@ -258,8 +256,7 @@ public class EmbargoPlugin extends Plugin {
 			clientThread.invokeLater(() -> {
 				if (client.getLocalPlayer().getName() == null)
 					return false;
-
-				panel.isLoggedIn = true;
+				
 				panel.updateLoggedIn(true);
 				if (config != null && config.highlightClan()) {
 					noticeBoardManager.setTOBNoticeBoard();
