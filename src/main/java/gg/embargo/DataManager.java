@@ -41,6 +41,9 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -63,35 +66,44 @@ public class DataManager {
 
     @Inject
     private EmbargoPlugin plugin;
-
-    private final HashMap<Integer, Integer> varbData = new HashMap<>();
-    private final HashMap<Integer, Integer> varpData = new HashMap<>();
-    private final HashMap<String, Integer> levelData = new HashMap<>();
-
+    private final ConcurrentHashMap<Integer, Integer> varbData = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, Integer> varpData = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer> levelData = new ConcurrentHashMap<>();
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
-     enum APIRoutes {
-         MANIFEST("runelite/manifest"),
-         UNTRACKABLES("untrackables"),
-         CHECKREGISTRATION("checkregistration"),
-         GET_PROFILE("getgear"),
-         SUBMIT_LOOT("loot"),
-         GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses"),
-         PREPARE_RAID("raid"),
-         UPLOAD_CLOG("collectionlog"),
-         MINIGAME_COMPLETE("minigame");
+    private final OkHttpClient shortTimeoutClient;
+    private static final int API_TIMEOUT_SECONDS = 5;
+    private static final int RESPONSE_SUCCESS = 200;
 
-         APIRoutes(String route) {
-             this.route = route;
-         }
+    @Inject
+    public DataManager(OkHttpClient okHttpClient) {
+        this.shortTimeoutClient = okHttpClient.newBuilder()
+                .callTimeout(5, TimeUnit.SECONDS)
+                .build();
+    }
 
-         private final String route;
+    enum APIRoutes {
+        MANIFEST("runelite/manifest"),
+        UNTRACKABLES("untrackables"),
+        CHECKREGISTRATION("checkregistration"),
+        GET_PROFILE("getgear"),
+        SUBMIT_LOOT("loot"),
+        GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses"),
+        PREPARE_RAID("raid"),
+        UPLOAD_CLOG("collectionlog"),
+        MINIGAME_COMPLETE("minigame");
 
-         @Override
-         public String toString() {
-             return route;
-         }
-     }
+        APIRoutes(String route) {
+            this.route = route;
+        }
+
+        private final String route;
+
+        @Override
+        public String toString() {
+            return route;
+        }
+    }
 
     private static final String API_URI = "https://embargo.gg/api/";
     private static final String MANIFEST_ENDPOINT = API_URI + APIRoutes.MANIFEST;
@@ -113,7 +125,7 @@ public class DataManager {
     }
 
     public List<Player> getSurroundingPlayers() {
-        return client.getPlayers();
+        return new ArrayList<>(client.getTopLevelWorldView().players().stream().toList());
     }
 
     public boolean shouldTrackLoot(String bossName) {
@@ -144,9 +156,9 @@ public class DataManager {
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                //Update what we want to track on the fly
+                // Update what we want to track on the fly
                 if (response.isSuccessful()) {
-                    //convert response.body().string() to ArrayList<String>
+                    // convert response.body().string() to ArrayList<String>
                     BufferedSource source = response.body().source();
                     String json = source.readUtf8();
                     response.close();
@@ -159,29 +171,29 @@ public class DataManager {
         return null;
     }
 
-    public void uploadCollectionLogUnlock(String item, String player)
-    {
+    public void uploadCollectionLogUnlock(String item, String player) {
         JsonObject payload = getClogUploadPayload(item, player);
         log.debug(String.valueOf(payload));
 
-        okHttpClient.newCall(new Request.Builder().url(CLOG_UNLOCK_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.debug("Failed to upload new clog slot to Embargo", e);
-            }
+        okHttpClient.newCall(new Request.Builder().url(CLOG_UNLOCK_ENDPOINT)
+                .post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        log.debug("Failed to upload new clog slot to Embargo", e);
+                    }
 
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                //Update what we want to track on the fly
-                if (response.isSuccessful()) {
-                    log.debug("Successfully uploaded new collection log slot");
-                    response.close();
-                    return;
-                }
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        // Update what we want to track on the fly
+                        if (response.isSuccessful()) {
+                            log.debug("Successfully uploaded new collection log slot");
+                            response.close();
+                            return;
+                        }
 
-                response.close();
-            }
-        });
+                        response.close();
+                    }
+                });
     }
 
     public void uploadRaidCompletion(String raid, String message) {
@@ -190,19 +202,20 @@ public class DataManager {
         }
 
         JsonObject payload = getRaidCompletionPayload(raid, message);
-        okHttpClient.newCall(new Request.Builder().url(PREPARE_RAID_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.debug("Failed to upload upload raid completion", e);
-            }
+        okHttpClient.newCall(new Request.Builder().url(PREPARE_RAID_ENDPOINT)
+                .post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        log.debug("Failed to upload upload raid completion", e);
+                    }
 
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    log.debug("Successfully uploaded raid preparation");
-                }
-            }
-        });
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        if (response.isSuccessful()) {
+                            log.debug("Successfully uploaded raid preparation");
+                        }
+                    }
+                });
     }
 
     public void uploadMinigameCompletion(String minigameName, String message) {
@@ -211,23 +224,23 @@ public class DataManager {
         }
 
         JsonObject payload = getMinigamePayload(minigameName, message);
-        okHttpClient.newCall(new Request.Builder().url(MINIGAME_COMPLETION_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                log.debug("Failed to upload upload minigame completion", e);
-            }
+        okHttpClient.newCall(new Request.Builder().url(MINIGAME_COMPLETION_ENDPOINT)
+                .post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        log.debug("Failed to upload upload minigame completion", e);
+                    }
 
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    log.debug("Successfully uploaded minigame preparation");
-                }
-            }
-        });
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        if (response.isSuccessful()) {
+                            log.debug("Successfully uploaded minigame preparation");
+                        }
+                    }
+                });
     }
 
-    private JsonObject getClogUploadPayload(String itemName, String username)
-    {
+    private JsonObject getClogUploadPayload(String itemName, String username) {
 
         JsonObject payload = new JsonObject();
         payload.addProperty("playerName", username);
@@ -242,7 +255,7 @@ public class DataManager {
         var world = client.getWorld();
         List<Player> players = getSurroundingPlayers();
 
-        //convert List<Player> to JSON
+        // convert List<Player> to JSON
         JsonArray playersJson = new JsonArray();
         for (Player player : players) {
             JsonObject playerJson = new JsonObject();
@@ -264,7 +277,7 @@ public class DataManager {
         var user = client.getLocalPlayer().getName();
         List<Player> players = getSurroundingPlayers();
 
-        //convert List<Player> to JSON
+        // convert List<Player> to JSON
         JsonArray playersJson = new JsonArray();
         for (Player player : players) {
             JsonObject playerJson = new JsonObject();
@@ -281,56 +294,37 @@ public class DataManager {
     }
 
     public JsonObject getProfile(String username) {
-        Request request = new Request.Builder()
-                .url(GET_PROFILE_ENDPOINT + '/' + username)
-                .get()
-                .build();
+        return executeWithRetry(() -> {
+            Request request = new Request.Builder()
+                    .url(GET_PROFILE_ENDPOINT + '/' + username)
+                    .get()
+                    .build();
 
-        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
-                .callTimeout(5, TimeUnit.SECONDS)
-                .build();
-
-        try (Response response = shortTimeoutClient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                BufferedSource source = response.body().source();
-                String json = source.readUtf8();
-
-                response.close();
-                return gson.fromJson(json, JsonObject.class);
+            try (Response response = shortTimeoutClient.newCall(request).execute()) {
+                if (response.isSuccessful()) {
+                    BufferedSource source = response.body().source();
+                    return gson.fromJson(source.readUtf8(), JsonObject.class);
+                }
+                return new JsonObject();
             }
+        }, 3);
+    }
 
-            response.close();
-            return new JsonObject();
-        } catch (IOException ioException) {
-            log.error("Failed to check if user is registered.");
-        }
-        return new JsonObject();
+    public CompletableFuture<JsonObject> getProfileAsync(String username) {
+        return CompletableFuture.supplyAsync(() -> getProfile(username));
     }
 
     public boolean checkRegistered(String username) {
-        Request request = new Request.Builder()
-                .url(CHECK_REGISTRATION_ENDPOINT + '/' + username)
-                .get()
-                .build();
+        return executeWithRetry(() -> {
+            Request request = new Request.Builder()
+                    .url(CHECK_REGISTRATION_ENDPOINT + '/' + username)
+                    .get()
+                    .build();
 
-        OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
-                .callTimeout(5, TimeUnit.SECONDS)
-                .build();
-
-        try (Response response = shortTimeoutClient.newCall(request).execute()) {
-            if (response.isSuccessful()) {
-                response.close();
-                return true;
-
-            } else {
-                log.error("Failed to check if user is registered.");
-                response.close();
+            try (Response response = shortTimeoutClient.newCall(request).execute()) {
+                return response.isSuccessful();
             }
-        } catch (IOException ioException) {
-            log.error("Failed to check if user is registered.");
-        }
-
-        return false;
+        }, 3);
     }
 
     public void uploadLoot(LootReceived event) {
@@ -368,7 +362,7 @@ public class DataManager {
         var user = client.getLocalPlayer().getName();
         List<Player> players = getSurroundingPlayers();
 
-        //convert List<Player> to JSON
+        // convert List<Player> to JSON
         JsonArray playersJson = new JsonArray();
         for (Player player : players) {
             JsonObject playerJson = new JsonObject();
@@ -376,7 +370,7 @@ public class DataManager {
             playersJson.add(playerJson);
         }
 
-        //convert itemStacks to JSON using gson
+        // convert itemStacks to JSON using gson
         JsonArray itemStacksJson = new JsonArray();
         for (ItemStack itemStack : itemStacks) {
             JsonObject itemStackJson = new JsonObject();
@@ -388,10 +382,10 @@ public class DataManager {
             itemStacksJson.add(itemStackJson);
         }
 
-        //convert json array to String
+        // convert json array to String
         String itemStacksJsonString = itemStacksJson.toString();
 
-        //build payload with bossName and itemStacks
+        // build payload with bossName and itemStacks
         JsonObject payload = new JsonObject();
         payload.addProperty("bossName", event.getName());
         payload.addProperty("user", user);
@@ -460,7 +454,8 @@ public class DataManager {
     private JsonObject convertToJson() {
         JsonObject j = new JsonObject();
         JsonObject parent = new JsonObject();
-        // We need to synchronize this to handle the case where the RuneScapeProfileType changes
+        // We need to synchronize this to handle the case where the RuneScapeProfileType
+        // changes
         synchronized (this) {
             RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
             HashMap<Integer, Integer> tempVarbData = clearChanges(varbData);
@@ -528,8 +523,10 @@ public class DataManager {
                 .build();
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                // If we failed to submit, read the data to the data lists (unless there are newer ones)
-                log.error("[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
+                // If we failed to submit, read the data to the data lists (unless there are
+                // newer ones)
+                log.error(
+                        "[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
                 this.restoreData(postRequestBody);
             }
         } catch (IOException ioException) {
@@ -562,7 +559,8 @@ public class DataManager {
                 public void onResponse(@NonNull Call call, @NonNull Response response) {
                     if (response.isSuccessful()) {
                         try {
-                            // We want to be able to change the varbs and varps we get on the fly. To do so, we tell
+                            // We want to be able to change the varbs and varps we get on the fly. To do so,
+                            // we tell
                             // the client what to send the server on startup via the manifest.
                             if (response.body() == null) {
                                 log.error("Manifest request succeeded but returned empty body");
@@ -627,7 +625,8 @@ public class DataManager {
                 public void onResponse(@NonNull Call call, Response response) throws IOException {
                     if (response.isSuccessful()) {
                         try {
-                            // We want to be able to change the varbs and varps we get on the fly. To do so, we tell
+                            // We want to be able to change the varbs and varps we get on the fly. To do so,
+                            // we tell
                             // the client what to send the server on startup via the manifest.
                             if (response.body() == null) {
                                 log.error("Manifest request succeeded but returned empty body");
@@ -667,5 +666,34 @@ public class DataManager {
             log.error("asd");
         }
         return -1;
+    }
+
+    private String buildApiUrl(APIRoutes route, String... params) {
+        StringBuilder url = new StringBuilder(API_URI);
+        url.append(route.toString());
+        for (String param : params) {
+            url.append('/').append(param);
+        }
+        return url.toString();
+    }
+
+    private <T> T executeWithRetry(Callable<T> task, int maxRetries) {
+        int attempts = 0;
+        while (attempts < maxRetries) {
+            try {
+                return task.call();
+            } catch (Exception e) {
+                attempts++;
+                if (attempts == maxRetries)
+                    throw new RuntimeException(e);
+                try {
+                    Thread.sleep(1000L * attempts);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        return null;
     }
 }
