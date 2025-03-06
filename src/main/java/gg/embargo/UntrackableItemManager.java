@@ -46,7 +46,10 @@ public class UntrackableItemManager {
         IMBUED_GUTHIX_MAX_CAPE(21784),
         IMBUED_SARADOMIN_MAX_CAPE_I(24232),
         IMBUED_ZAMORAK_MAX_CAPE_I(24233),
-        IMBUED_GUTHIX_MAX_CAPE_I(24234);
+        IMBUED_GUTHIX_MAX_CAPE_I(24234),
+
+        //BINGO #1 ITEMS
+        
 
 
         private final int itemId;
