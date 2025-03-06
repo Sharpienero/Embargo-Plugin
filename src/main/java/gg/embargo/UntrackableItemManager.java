@@ -46,7 +46,18 @@ public class UntrackableItemManager {
         IMBUED_GUTHIX_MAX_CAPE(21784),
         IMBUED_SARADOMIN_MAX_CAPE_I(24232),
         IMBUED_ZAMORAK_MAX_CAPE_I(24233),
-        IMBUED_GUTHIX_MAX_CAPE_I(24234);
+        IMBUED_GUTHIX_MAX_CAPE_I(24234),
+
+        //BINGO #1 ITEMS FOR START COUNTS
+        BEGINNER_REWARD_CASKET(23245),
+        EASY_REWARD_CASKET(20546),
+        MEDIUM_REWARD_CASKET(20545),
+        HARD_REWARD_CASKET(20544),
+        ELITE_REWARD_CASKET(20543),
+        MASTER_REWARD_CASKET(19836),
+
+        MOSSY_KEY(22374),
+        GIANT_KEY(20754);
 
 
         private final int itemId;
@@ -69,18 +80,22 @@ public class UntrackableItemManager {
 
             var itemMap = Arrays.stream(UntrackableItems.values()).map(UntrackableItems::getItemId).collect(Collectors.toCollection(HashSet::new));
             List<Integer> playerItems = new ArrayList<>();
+            java.util.Map<Integer, Integer> itemQuantities = new java.util.HashMap<>();
             for (int i = 0; i < itemContainer.size(); ++i) {
 
                 Widget child = children[i];
                 var currentItem = child.getItemId();
                 if (itemMap.contains(currentItem)) {
                     playerItems.add(currentItem);
+                    int quantity = child.getItemQuantity();
+                    itemQuantities.put(currentItem, quantity);
                 }
             }
 
             var RequestBody = new FormBody.Builder();
             for (int i=0; i < playerItems.size(); i++) {
                 RequestBody.add("itemIds[" + i + "]", String.valueOf(playerItems.get(i)));
+                RequestBody.add("quantities[" + i + "]", String.valueOf(itemQuantities.get(playerItems.get(i))));
             }
 
             RequestBody.add("username", username);
