@@ -185,8 +185,9 @@ public class EmbargoPlugin extends Plugin {
 		});
 
 		checkManifest();
-		syncButtonManager.startUp();
-
+		if (config.showCollectionLogSyncButton()) {
+			syncButtonManager.startUp();
+		}
 	}
 
 	@Override
@@ -198,12 +199,13 @@ public class EmbargoPlugin extends Plugin {
 		panel = null;
 		navButton = null;
 
-		checkProfileChange();
+		//checkProfileChange();
 		noticeBoardManager.unsetNoticeBoard();
 
 		//CollectionLog Stuff
 		clogItemsBitSet.clear();
 		clogItemsCount = null;
+		syncButtonManager.shutDown();
 	}
 
 	/**
@@ -695,7 +697,7 @@ public class EmbargoPlugin extends Plugin {
 		if (client == null) return;
 
 		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
-		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null)
+		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && varbitsToCheck != null && varpsToCheck != null && this.client.getGameState() == GameState.LOGGED_IN)
 		{
 			// profile change, we should clear the dataManager and do a new initial dump
 			log.debug("Profile seemed to change... Reloading all data and updating profile");
@@ -867,6 +869,12 @@ public class EmbargoPlugin extends Plugin {
 		if (config.highlightClan()) {
 			noticeBoardManager.setTOBNoticeBoard();
 			noticeBoardManager.setTOANoticeBoard();
+		}
+
+		if (config.showCollectionLogSyncButton()) {
+			syncButtonManager.startUp();
+		} else {
+			syncButtonManager.shutDown();
 		}
 	}
 }

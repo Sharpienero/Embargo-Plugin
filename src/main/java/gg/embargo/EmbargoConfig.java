@@ -10,7 +10,6 @@ import java.awt.Color;
 @ConfigGroup("embargo")
 public interface EmbargoConfig extends Config
 {
-
     @ConfigSection(
             name = "Raid Notice Boards",
             description = "Section that houses Notice Board options",
@@ -42,5 +41,21 @@ public interface EmbargoConfig extends Config
     {
         return new Color(53, 201, 255);
     }
+
+    @ConfigSection(
+            name = "Collection Log Sync Button",
+            description = "Add a button to the collection log interface to sync your collection log with Embargo",
+            position = 2
+    )
+    String collectionLogSettings = "CollectionLogSettings";
+
+    @ConfigItem(
+            keyName = "showCollectionLogSyncButton",
+            name = "Show Collection Log Sync Button",
+            description = "Whether or not to render the Embargo collection log sync button",
+            position = 1,
+            section = collectionLogSettings
+    )
+    default boolean showCollectionLogSyncButton() { return true; }
 }
 
