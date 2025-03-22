@@ -19,13 +19,13 @@ The plugin currently sends the following to Embargo's servers:
     * Music cape/music cape (t)
     * Barrows gloves
     * Imbued god capes (sara, guthix, zamorak (max/imbued max capes included))
+* Collection log items + quantity when Embargo button inside of Collection Log panel is pressed
  
 
 ## Other features
 ### Clan member raid board highlighting: 
 
 Config settings:
-
 ![Config settings](resources/highlight-settings.png)
 
 TOB:
@@ -35,3 +35,7 @@ TOB:
 TOA:
 ![TOA Image](resources/toa-highlight.png)
 ![TOA Image2](resources/toa-highlight2.png)
+
+Collection Log:
+![Collection Log Image](resources/collecton-log-panel.png)
+
