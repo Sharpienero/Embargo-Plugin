@@ -1,9 +1,11 @@
 package gg.embargo;
 
-import com.google.common.collect.HashMultimap;
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
-import gg.embargo.collections.SyncButtonManager;
+import gg.embargo.ui.EmbargoPanel;
+import gg.embargo.ui.SyncButtonManager;
+import gg.embargo.noticeboard.NoticeBoardManager;
+import gg.embargo.untrackables.UntrackableItemManager;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -110,11 +112,6 @@ public class EmbargoPlugin extends Plugin {
 		dataManager.getManifest();
 		panel.updateLoggedIn(false);
 
-		if (config != null && config.highlightClan()) {
-			noticeBoardManager.setTOBNoticeBoard();
-			noticeBoardManager.setTOANoticeBoard();
-		}
-
 		if (config != null && config.showCollectionLogSyncButton()) {
 			syncButtonManager.startUp();
 		}
@@ -122,6 +119,10 @@ public class EmbargoPlugin extends Plugin {
 		clogManager.startUp(syncButtonManager);
 		untrackableItemManager.startUp();
 		noticeBoardManager.startUp();
+
+		if (config != null && config.highlightClan()) {
+			noticeBoardManager.setNoticeBoards();
+		}
 	}
 
 	@Override
@@ -133,7 +134,7 @@ public class EmbargoPlugin extends Plugin {
 		panel = null;
 		navButton = null;
 
-		noticeBoardManager.unsetNoticeBoard();
+
 		noticeBoardManager.shutDown();
 		clogManager.shutDown();
 		untrackableItemManager.shutDown();
@@ -303,7 +304,7 @@ public class EmbargoPlugin extends Plugin {
 			return;
 		}
 
-		noticeBoardManager.unsetNoticeBoard();
+		noticeBoardManager.unsetNoticeBoards();
 		if (config.highlightClan()) {
 			noticeBoardManager.setTOBNoticeBoard();
 			noticeBoardManager.setTOANoticeBoard();

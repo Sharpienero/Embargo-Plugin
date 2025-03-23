@@ -1,4 +1,4 @@
-package gg.embargo;
+package gg.embargo.untrackables;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -28,15 +28,11 @@ public class UntrackableItemManager {
     @Inject
     private Client client;
 
-    @Inject
-    private ClientThread clientThread;
-
     private final EventBus eventBus;
 
     @Inject
-    private UntrackableItemManager(Client client, ClientThread clientThread, EventBus eventBus) {
+    private UntrackableItemManager(Client client, EventBus eventBus) {
         this.client = client;
-        this.clientThread = clientThread;
         this.eventBus = eventBus;
     }
 
@@ -143,10 +139,10 @@ public class UntrackableItemManager {
         }
     }
 
-    void startUp() {
+    public void startUp() {
         eventBus.register(this);
     }
-    void shutDown() { eventBus.unregister(this);}
+    public void shutDown() { eventBus.unregister(this);}
 
     @Subscribe
     public void onScriptPostFired(ScriptPostFired event) {

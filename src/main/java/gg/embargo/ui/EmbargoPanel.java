@@ -1,8 +1,9 @@
-package gg.embargo;
+package gg.embargo.ui;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import gg.embargo.DataManager;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -23,7 +24,6 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.Objects;
 
 @Slf4j
 public class EmbargoPanel extends PluginPanel {
@@ -176,7 +176,7 @@ public class EmbargoPanel extends PluginPanel {
         updateLoggedIn(false);
     }
 
-    void init()
+    public void init()
     {
         this.setupSidePanel();
     }
@@ -290,7 +290,7 @@ public class EmbargoPanel extends PluginPanel {
 
     }
 
-    void reset()
+    public void reset()
     {
         eventBus.unregister(this);
         this.updateLoggedIn(false);

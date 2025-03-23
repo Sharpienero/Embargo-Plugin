@@ -23,7 +23,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package gg.embargo.collections;
+package gg.embargo.ui;
 
 import com.google.inject.Inject;
 import lombok.Getter;

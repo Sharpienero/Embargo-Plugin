@@ -1,14 +1,15 @@
 /*
 Almost all of this code was taken from the tob-notice-board plugin by Broooklyn
 https://github.com/Broooklyn/runelite-external-plugins/tree/tob-notice-board
-Slight modifications were made to work with clans
+Slight modifications were made to work with clans by Sharpienero/Embargo
 
 Added TOA code
  */
 
 
-package gg.embargo;
+package gg.embargo.noticeboard;
 
+import gg.embargo.EmbargoConfig;
 import lombok.extern.slf4j.Slf4j;
 import com.google.inject.Provides;
 import net.runelite.api.Client;
@@ -111,26 +112,34 @@ public class NoticeBoardManager {
         setNoticeBoardWidget(772, 2, clanColor);
     }
 
-    void startUp()
+    public void startUp()
     {
         eventBus.register(this);
     }
-    void shutDown()
+    public void shutDown()
     {
+        unsetNoticeBoards();
         eventBus.unregister(this);
     }
 
-    void setTOBNoticeBoard()
+    public void setTOBNoticeBoard()
     {
 
         setTOBNameColors(config.clanColor().getRGB());
     }
 
-    void setTOANoticeBoard() {
+    public void setTOANoticeBoard() {
         setTOANameColors(config.clanColor().getRGB());
     }
 
-    void unsetNoticeBoard()
+    public void setNoticeBoards() {
+        if (config.highlightClan()) {
+            setTOBNoticeBoard();
+            setTOANoticeBoard();
+        }
+    }
+
+    public void unsetNoticeBoards()
     {
         setTOBNameColors(DEFAULT_RGB);
         setTOANameColors(DEFAULT_RGB);
@@ -161,7 +170,7 @@ public class NoticeBoardManager {
             return;
         }
 
-        unsetNoticeBoard();
+        unsetNoticeBoards();
         if (config.highlightClan()) {
             setTOBNoticeBoard();
             setTOANoticeBoard();

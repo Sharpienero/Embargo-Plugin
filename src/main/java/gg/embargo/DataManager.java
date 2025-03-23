@@ -27,6 +27,7 @@ package gg.embargo;
 
 import com.google.common.collect.HashMultimap;
 import com.google.gson.*;
+import gg.embargo.ui.EmbargoPanel;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;

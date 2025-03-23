@@ -28,6 +28,7 @@ package gg.embargo.collections;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import gg.embargo.EmbargoConfig;
+import gg.embargo.ui.SyncButtonManager;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.GameStateChanged;
