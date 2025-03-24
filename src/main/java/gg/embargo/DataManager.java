@@ -25,21 +25,29 @@
  */
 package gg.embargo;
 
+import com.google.common.collect.HashMultimap;
 import com.google.gson.*;
+import gg.embargo.ui.EmbargoPanel;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.loottracker.LootReceived;
+import net.runelite.client.task.Schedule;
 import okhttp3.*;
 import okio.BufferedSource;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -59,10 +67,26 @@ public class DataManager {
     private OkHttpClient okHttpClient;
 
     @Inject
-    private Gson gson;
+    private EmbargoPanel embargoPanel;
 
     @Inject
-    private EmbargoPlugin plugin;
+    private Gson gson;
+
+    @Getter
+    @Setter
+    private HashSet<Integer> varpsToCheck;
+
+    @Getter
+    @Setter
+    private HashSet<Integer> varbitsToCheck;
+
+    @Getter
+    @Setter
+    private int lastManifestVersion = -1;
+
+    private int[] oldVarps;
+
+    private final HashMultimap<Integer, Integer> varpToVarbitMapping = HashMultimap.create();
 
     private final HashMap<Integer, Integer> varbData = new HashMap<>();
     private final HashMap<Integer, Integer> varpData = new HashMap<>();
@@ -110,6 +134,11 @@ public class DataManager {
         synchronized (this) {
             varbData.put(varbIndex, varbValue);
         }
+    }
+
+    public void resetVarbsAndVarpsToCheck(){
+        varbitsToCheck = null;
+        varpsToCheck = null;
     }
 
     public List<Player> getSurroundingPlayers() {
@@ -501,6 +530,8 @@ public class DataManager {
         }
     }
 
+
+
     protected void submitToAPI() {
         if (!hasDataToPush() || client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null)
             return;
@@ -529,11 +560,11 @@ public class DataManager {
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 // If we failed to submit, read the data to the data lists (unless there are newer ones)
-                log.error("[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
+                //log.error("[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
                 this.restoreData(postRequestBody);
             }
         } catch (IOException ioException) {
-            log.error("[submitToAPI IOException: 496] Failed to submit data, attempting to reload dropped data");
+            //log.error("[submitToAPI IOException: 496] Failed to submit data, attempting to reload dropped data");
             this.restoreData(postRequestBody);
         }
     }
@@ -544,6 +575,23 @@ public class DataManager {
             h.add(jObj.getAsInt());
         }
         return h;
+    }
+
+    public void loadInitialData()
+    {
+        for (int varbIndex : varbitsToCheck)
+        {
+            storeVarbitChanged(varbIndex, client.getVarbitValue(varbIndex));
+        }
+
+        for (int varpIndex : varpsToCheck)
+        {
+            storeVarpChanged(varpIndex, client.getVarpValue(varpIndex));
+        }
+        for (Skill s : Skill.values())
+        {
+            storeSkillChanged(s.getName(), client.getRealSkillLevel(s));
+        }
     }
 
     protected void getManifest() {
@@ -571,16 +619,16 @@ public class DataManager {
 
                             JsonObject j = gson.fromJson(response.body().string(), JsonObject.class);
                             try {
-                                plugin.setVarbitsToCheck(parseSet(j.getAsJsonArray("varbits")));
-                                plugin.setVarpsToCheck(parseSet(j.getAsJsonArray("varps")));
+                                setVarbitsToCheck(parseSet(j.getAsJsonArray("varbits")));
+                                setVarpsToCheck(parseSet(j.getAsJsonArray("varps")));
                                 try {
                                     int manifestVersion = j.get("version").getAsInt();
-                                    if (plugin.getLastManifestVersion() != manifestVersion) {
-                                        plugin.setLastManifestVersion(manifestVersion);
-                                        clientThread.invoke(() -> plugin.loadInitialData());
+                                    if (getLastManifestVersion() != manifestVersion) {
+                                        setLastManifestVersion(manifestVersion);
+                                        clientThread.invoke(() -> loadInitialData());
                                     }
                                 } catch (UnsupportedOperationException | NullPointerException exception) {
-                                    plugin.setLastManifestVersion(-1);
+                                    setLastManifestVersion(-1);
                                 }
                             } catch (NullPointerException e) {
                                 log.error("Manifest possibly missing varbits or varps entry from /manifest call");
@@ -639,12 +687,12 @@ public class DataManager {
                             try {
                                 try {
                                     int manifestVersion = j.get("version").getAsInt();
-                                    if (plugin.getLastManifestVersion() != manifestVersion) {
-                                        plugin.setLastManifestVersion(manifestVersion);
-                                        clientThread.invoke(() -> plugin.loadInitialData());
+                                    if (getLastManifestVersion() != manifestVersion) {
+                                        setLastManifestVersion(manifestVersion);
+                                        clientThread.invoke(() -> loadInitialData());
                                     }
                                 } catch (UnsupportedOperationException | NullPointerException exception) {
-                                    plugin.setLastManifestVersion(-1);
+                                    setLastManifestVersion(-1);
                                 }
                             } catch (NullPointerException | ClassCastException e) {
                                 log.error(e.getLocalizedMessage());
@@ -668,4 +716,106 @@ public class DataManager {
         }
         return -1;
     }
+
+    @Subscribe
+    public void onVarbitChanged(VarbitChanged varbitChanged)
+    {
+        if (client == null || varbitsToCheck == null || varpsToCheck == null)
+            return;
+        if (oldVarps == null)
+            setupVarpTracking();
+
+        int varpIndexChanged = varbitChanged.getIndex();
+        if (varpsToCheck.contains(varpIndexChanged))
+        {
+            storeVarpChanged(varpIndexChanged, client.getVarpValue(varpIndexChanged));
+        }
+        for (Integer i : varpToVarbitMapping.get(varpIndexChanged))
+        {
+            if (!varbitsToCheck.contains(i))
+                continue;
+            // For each varbit index, see if it changed.
+            int oldValue = client.getVarbitValue(oldVarps, i);
+            int newValue = client.getVarbitValue(i);
+            if (oldValue != newValue)
+                storeVarbitChanged(i, newValue);
+        }
+        oldVarps[varpIndexChanged] = client.getVarpValue(varpIndexChanged);
+    }
+
+    // Need to keep track of old varps and what varps each varb is in.
+    // On change
+    // Get varp, if varp in hashset, queue it.
+    // Get each varb index in varp. If varb changed and varb in hashset, queue it.
+    // Checking if varb has changed requires us to keep track of old varps
+    private void setupVarpTracking()
+    {
+        final int VARBITS_ARCHIVE_ID = 14;
+        // Init stuff to keep track of varb changes
+        varpToVarbitMapping.clear();
+
+        if (oldVarps == null)
+        {
+            oldVarps = new int[client.getVarps().length];
+        }
+
+        // Set oldVarps to be the current varps
+        System.arraycopy(client.getVarps(), 0, oldVarps, 0, oldVarps.length);
+
+        // For all varbits, add their ids to the multimap with the varp index as their key
+        clientThread.invoke(() -> {
+            if (client.getIndexConfig() == null)
+            {
+                return false;
+            }
+            IndexDataBase indexVarbits = client.getIndexConfig();
+            final int[] varbitIds = indexVarbits.getFileIds(VARBITS_ARCHIVE_ID);
+            for (int id : varbitIds)
+            {
+                VarbitComposition varbit = client.getVarbit(id);
+                if (varbit != null)
+                {
+                    varpToVarbitMapping.put(varbit.getIndex(), id);
+                }
+            }
+            return true;
+        });
+    }
+
+    @Schedule(
+            period = 5*60,
+            unit = ChronoUnit.SECONDS,
+            asynchronous = true
+    )
+    public void resyncManifest()
+    {
+        log.debug("Attempting to resync manifest");
+        if (getVersion() != getLastManifestVersion())
+        {
+            getManifest();
+        }
+    }
+
+    @Schedule(
+            period = 30,
+            unit = ChronoUnit.SECONDS,
+            asynchronous = true
+    )
+    public void scheduledSubmit()
+    {
+        if (client != null && (client.getGameState() != GameState.HOPPING && client.getGameState() != GameState.LOGIN_SCREEN)) {
+            submitToAPI();
+            if (client.getLocalPlayer() != null) {
+                String username = client.getLocalPlayer().getName();
+                if (checkRegistered(username)) {
+                    log.debug("updateProfileAfterLoggedIn Member registered");
+                    embargoPanel.updateLoggedIn(true);
+                }
+            }
+        } else {
+            log.debug("User is hopping or logged out, do not send data");
+            embargoPanel.logOut();
+        }
+    }
+
 }

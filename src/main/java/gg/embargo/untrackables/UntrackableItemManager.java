@@ -1,4 +1,4 @@
-package gg.embargo;
+package gg.embargo.untrackables;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -6,16 +6,18 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import okhttp3.*;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -26,10 +28,20 @@ public class UntrackableItemManager {
     @Inject
     private Client client;
 
+    private final EventBus eventBus;
+
+    @Inject
+    private UntrackableItemManager(Client client, EventBus eventBus) {
+        this.client = client;
+        this.eventBus = eventBus;
+    }
+
     @Inject
     private OkHttpClient okHttpClient;
 
     private static final String UNTRACKABLE_ENDPOINT = "https://embargo.gg/api/untrackables";
+
+    private final HashMap<String, LocalDateTime> lastLootTime = new HashMap<>();
 
     @Getter
     enum UntrackableItems {
@@ -124,6 +136,34 @@ public class UntrackableItemManager {
             } catch (IllegalArgumentException e) {
                 log.error("Bad URL given: {}", e.getLocalizedMessage());
             }
+        }
+    }
+
+    public void startUp() {
+        eventBus.register(this);
+    }
+    public void shutDown() { eventBus.unregister(this);}
+
+    @Subscribe
+    public void onScriptPostFired(ScriptPostFired event) {
+        if (event.getScriptId() == 277) {
+            if (client == null || client.getLocalPlayer() == null) {
+                return;
+            }
+
+            var username = client.getLocalPlayer().getName();
+
+            if (lastLootTime.containsKey(username)) {
+                LocalDateTime lastLootTimestamp = lastLootTime.get(username);
+
+                if (LocalDateTime.now().isBefore(lastLootTimestamp)) {
+                    log.debug("Player has opened bank within the last 3 minutes, not checking for untrackable items");
+                    return;
+                }
+
+            }
+            getUntrackableItems(username);
+            lastLootTime.put(username, LocalDateTime.now().plusMinutes(3));
         }
     }
 }

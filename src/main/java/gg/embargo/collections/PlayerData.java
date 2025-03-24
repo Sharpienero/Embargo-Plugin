@@ -23,14 +23,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package gg.embargo;
+package gg.embargo.collections;
 
-import lombok.Value;
-import net.runelite.client.config.RuneScapeProfileType;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Value
-public class PlayerProfile
+import java.util.HashMap;
+import java.util.Map;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class PlayerData
 {
-    String username;
-    RuneScapeProfileType profileType;
+    public Integer collectionLogItemCount = null;
+    public String collectionLogSlots = "";
+    public Map<Integer, Integer> collectionLogCounts = new HashMap<>();
+
+    public boolean isEmpty()
+    {
+        return collectionLogSlots.isEmpty() && collectionLogItemCount == null;
+    }
+
+    public void clearCollectionLog()
+    {
+        collectionLogSlots = "";
+        collectionLogItemCount = null;
+    }
 }
