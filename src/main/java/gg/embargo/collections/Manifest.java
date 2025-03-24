@@ -23,16 +23,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package gg.embargo;
+package gg.embargo.collections;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.util.ArrayList;
+
 @Data
-@AllArgsConstructor
-public class PlayerDataSubmission
+public class Manifest
 {
-    private String username;
-    private String profile;
-    private PlayerData data;
+    final float version = -1;
+    final int[] varbits = new int[0];
+    final int[] varps = new int[0];
+    public final ArrayList<Integer> collections = new ArrayList<>();
 }
