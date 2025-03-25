@@ -531,7 +531,6 @@ public class DataManager {
     }
 
 
-
     protected void submitToAPI() {
         if (!hasDataToPush() || client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null)
             return;
@@ -797,7 +796,7 @@ public class DataManager {
     }
 
     @Schedule(
-            period = 30,
+            period = 10,
             unit = ChronoUnit.SECONDS,
             asynchronous = true
     )
@@ -814,6 +813,8 @@ public class DataManager {
             }
         } else {
             log.debug("User is hopping or logged out, do not send data");
+            embargoPanel.isLoggedIn = false;
+            embargoPanel.updateLoggedIn(false);
             embargoPanel.logOut();
         }
     }

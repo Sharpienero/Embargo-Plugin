@@ -25,11 +25,11 @@ import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
 
-import java.util.*;
-
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +40,11 @@ import java.util.regex.Pattern;
 	tags = {"embargo", "clan", "embargo.gg", "ironman"}
 )
 public class EmbargoPlugin extends Plugin {
+
+	private static final String CONFIG_GROUP = "embargo";
+	private static final int SECONDS_BETWEEN_UPLOADS = 30;
+	private static final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
+	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
 
 	@Inject
 	private DataManager dataManager;
@@ -52,6 +57,9 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private EmbargoConfig config;
+
+	@Inject
+	private EmbargoPanel embargoPanel;
 
 	@Inject
 	private NoticeBoardManager noticeBoardManager;
@@ -67,24 +75,15 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private UntrackableItemManager untrackableItemManager;
-	private RuneScapeProfileType lastProfile;
 
-	@Getter
-	private EmbargoPanel panel;
+	private RuneScapeProfileType lastProfile;
 
 	private NavigationButton navButton;
 
-	private final HashMap<String, Integer> skillLevelCache = new HashMap<>();
-	private final int SECONDS_BETWEEN_UPLOADS = 30;
-
-	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
-
-	private final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
-	private final String CONFIG_GROUP = "embargo";
+	private final Map<String, Integer> skillLevelCache = new HashMap<>();
 
 	@Provides
-	EmbargoConfig getConfig(ConfigManager configManager)
-	{
+	EmbargoConfig getConfig(ConfigManager configManager) {
 		return configManager.getConfig(EmbargoConfig.class);
 	}
 
@@ -92,26 +91,40 @@ public class EmbargoPlugin extends Plugin {
 	protected void startUp() {
 		log.info("Embargo Clan plugin started!");
 
-		//Build out the side panel
-		panel = injector.getInstance(EmbargoPanel.class);
-		panel.init();
-		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
-
-		navButton = NavigationButton.builder()
-				.tooltip("Embargo Clan")
-				.icon(icon)
-				.priority(0)
-				.panel(panel)
-				.build();
-
-		clientToolbar.addNavigation(navButton);
-
+		initializePanel();
+		initializeManagers();
+		
 		lastProfile = null;
 		dataManager.resetVarbsAndVarpsToCheck();
 		skillLevelCache.clear();
 		dataManager.getManifest();
-		panel.updateLoggedIn(false);
 
+		if (client != null) {
+			if (client.getGameState() == GameState.LOGGED_IN) {
+				if (dataManager.checkRegistered(client.getLocalPlayer().getName())) {
+					embargoPanel.updateLoggedIn(false);
+				}
+			}
+		}
+	}
+
+	private void initializePanel() {
+		embargoPanel = injector.getInstance(EmbargoPanel.class);
+		embargoPanel.init();
+		embargoPanel.updateLoggedIn(false);
+		
+		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
+		navButton = NavigationButton.builder()
+				.tooltip("Embargo Clan")
+				.icon(icon)
+				.priority(0)
+				.panel(embargoPanel)
+				.build();
+
+		clientToolbar.addNavigation(navButton);
+	}
+	
+	private void initializeManagers() {
 		if (config != null && config.showCollectionLogSyncButton()) {
 			syncButtonManager.startUp();
 		}
@@ -128,17 +141,76 @@ public class EmbargoPlugin extends Plugin {
 	@Override
 	protected void shutDown() {
 		log.info("Embargo Clan plugin stopped!");
+		
 		dataManager.clearData();
-		panel.reset();
+		embargoPanel.reset();
 		clientToolbar.removeNavigation(navButton);
-		panel = null;
+		
+		shutDownManagers();
+
+		embargoPanel = null;
 		navButton = null;
-
-
+	}
+	
+	private void shutDownManagers() {
 		noticeBoardManager.shutDown();
 		clogManager.shutDown();
 		untrackableItemManager.shutDown();
 		syncButtonManager.shutDown();
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event) {
+		GameState gameState = event.getGameState();
+		if (gameState == GameState.LOADING) return;
+		
+		if (gameState == GameState.LOGGED_IN && !embargoPanel.isLoggedIn) {
+			log.debug("inside of condition, handling loggedIn");
+			handleLoggedIn();
+		} else if (gameState == GameState.LOGIN_SCREEN) {
+			handleLoggedOut();
+		}
+	}
+	
+	private void handleLoggedIn() {
+		clientThread.invokeLater(() -> {
+			if (client == null) {
+				return false;
+			}
+
+			Player localPlayer = client.getLocalPlayer();
+			if (localPlayer != null) {
+				String username = localPlayer.getName();
+				if (dataManager.checkRegistered(username)) {
+					embargoPanel.updateLoggedIn(true);
+					return true;
+				}
+			}
+			return false;
+		});
+	}
+	
+	private void handleLoggedOut() {
+		log.debug("User logged out");
+    
+		// Clear both panel references
+		if (embargoPanel != null) {
+			embargoPanel.logOut();
+		} else {
+			log.debug("embargoPanel is null!!!");
+		}
+    
+		// Also clear the panel reference (which is different from embargoPanel)
+		if (embargoPanel != null) {
+			embargoPanel.reset();
+			embargoPanel.updateLoggedIn(false);
+		}
+    
+		// Clear data in DataManager to ensure complete reset
+		dataManager.clearData();
+    
+		// Reset skill cache
+		skillLevelCache.clear();
 	}
 
 	@Schedule(
@@ -146,20 +218,29 @@ public class EmbargoPlugin extends Plugin {
 			unit = ChronoUnit.SECONDS,
 			asynchronous = true
 	)
-	public void submitToAPI()
-	{
-		if (client != null && (client.getGameState() != GameState.HOPPING && client.getGameState() != GameState.LOGIN_SCREEN)) {
+	public void submitToAPI() {
+		if (client == null) {
+			return;
+		}
+		
+		GameState gameState = client.getGameState();
+		if (gameState != GameState.HOPPING && gameState != GameState.LOGIN_SCREEN) {
 			dataManager.submitToAPI();
-			if (client.getLocalPlayer() != null) {
-				String username = client.getLocalPlayer().getName();
-				if (dataManager.checkRegistered(username)) {
-					log.debug("updateProfileAfterLoggedIn Member registered");
-					panel.updateLoggedIn(true);
-				}
-			}
+			updatePlayerRegistrationStatus();
 		} else {
 			log.debug("User is hopping or logged out, do not send data");
-			panel.logOut();
+			embargoPanel.logOut();
+		}
+	}
+	
+	private void updatePlayerRegistrationStatus() {
+		Player localPlayer = client.getLocalPlayer();
+		if (localPlayer != null) {
+			String username = localPlayer.getName();
+			if (dataManager.checkRegistered(username)) {
+				log.debug("updateProfileAfterLoggedIn Member registered");
+				embargoPanel.updateLoggedIn(true);
+			}
 		}
 	}
 
@@ -169,20 +250,21 @@ public class EmbargoPlugin extends Plugin {
 		asynchronous = true
 	)
 	public void checkProfileChanged() {
-		if (client.getLocalPlayer() != null && client.getGameState() == GameState.LOGGED_IN) {
-			panel.updateLoggedIn(true);
+		Player localPlayer = client.getLocalPlayer();
+		if (localPlayer != null && client.getGameState() == GameState.LOGGED_IN) {
+			embargoPanel.updateLoggedIn(true);
 			clientThread.invokeLater(this::checkProfileChange);
 		}
 	}
 
 	@Getter
 	public enum MinigameCompletionMessages {
-		WINTERTODT("Your subdued Wintertodt count is:"), //g
+		WINTERTODT("Your subdued Wintertodt count is:"),
 		TEMPOROSS("Your Tempoross kill count is:"),
 		GOTR("Amount of rifts you have closed:"),
 		SOUL_WARS("team has defeated the Avatar"),
 		BARBARIAN_ASSAULT("Wave 10 duration"),
-		VOLCANIC_MINE("Your fragments disintegrate"); //g
+		VOLCANIC_MINE("Your fragments disintegrate");
 
 		private final String completionMessage;
 
@@ -205,111 +287,126 @@ public class EmbargoPlugin extends Plugin {
 		RaidCompletionMessages(String completionMessage) {
 			this.completionMessage = completionMessage;
 		}
-
 	}
 
 	@Subscribe
-	public void onChatMessage(ChatMessage chatMessage)
-	{
+	public void onChatMessage(ChatMessage chatMessage) {
 		Player player = client.getLocalPlayer();
-
-		if (player == null)
-		{
+		if (player == null) {
 			return;
 		}
 
-		//Point History generation for new collection log
-		Matcher m = COLLECTION_LOG_ITEM_REGEX.matcher(chatMessage.getMessage());
-		RuneScapeProfileType profType = RuneScapeProfileType.getCurrent(client);
-		if (profType == RuneScapeProfileType.STANDARD && chatMessage.getType() == ChatMessageType.GAMEMESSAGE && m.matches()) {
-			String obtainedItemName = Text.removeTags(m.group(1));
-			dataManager.uploadCollectionLogUnlock(obtainedItemName, player.getName());
+		String message = chatMessage.getMessage();
+		ChatMessageType messageType = chatMessage.getType();
+		RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
+		
+		// Only process for standard profile
+		if (profileType != RuneScapeProfileType.STANDARD) {
+			return;
 		}
-
-		if (profType == RuneScapeProfileType.STANDARD && (chatMessage.getType() == ChatMessageType.GAMEMESSAGE || chatMessage.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION || chatMessage.getType() == ChatMessageType.SPAM))
-		{
-			String message = chatMessage.getMessage();
+		
+		// Check for collection log items
+		if (messageType == ChatMessageType.GAMEMESSAGE) {
+			Matcher matcher = COLLECTION_LOG_ITEM_REGEX.matcher(message);
+			if (matcher.matches()) {
+				String obtainedItemName = Text.removeTags(matcher.group(1));
+				dataManager.uploadCollectionLogUnlock(obtainedItemName, player.getName());
+			}
+		}
+		
+		// Check for activity completions
+		if (messageType == ChatMessageType.GAMEMESSAGE || 
+			messageType == ChatMessageType.FRIENDSCHATNOTIFICATION || 
+			messageType == ChatMessageType.SPAM) {
 			handleActivityCompletion(message);
 		}
 	}
 
 	public void handleActivityCompletion(String chatMessage) {
-		for (RaidCompletionMessages r : RaidCompletionMessages.values())
-		{
-			if (chatMessage.contains(r.getCompletionMessage()))
-			{
-				dataManager.uploadRaidCompletion(r.name(), chatMessage);
+		// Check for raid completions
+		for (RaidCompletionMessages raid : RaidCompletionMessages.values()) {
+			if (chatMessage.contains(raid.getCompletionMessage())) {
+				dataManager.uploadRaidCompletion(raid.name(), chatMessage);
+				return; // Return early once we've found a match
 			}
 		}
 
-		for (MinigameCompletionMessages mg : MinigameCompletionMessages.values())
-		{
-			if (chatMessage.contains(mg.getCompletionMessage()))
-			{
-				dataManager.uploadMinigameCompletion(mg.name(), chatMessage);
+		// Check for minigame completions
+		for (MinigameCompletionMessages minigame : MinigameCompletionMessages.values()) {
+			if (chatMessage.contains(minigame.getCompletionMessage())) {
+				dataManager.uploadMinigameCompletion(minigame.name(), chatMessage);
+				return; // Return early once we've found a match
 			}
 		}
 	}
 
+	public void checkProfileChange() {
+		if (client == null) {
+			return;
+		}
 
-	public void checkProfileChange()
-	{
-		if (client == null) return;
-
-		RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
-		if (r == RuneScapeProfileType.STANDARD && r != lastProfile && client != null && dataManager.getVarbitsToCheck() != null && dataManager.getVarpsToCheck() != null && this.client.getGameState() == GameState.LOGGED_IN)
-		{
-			// profile change, we should clear the dataManager and do a new initial dump
-			log.debug("Profile seemed to change... Reloading all data and updating profile");
-			lastProfile = r;
+		RuneScapeProfileType currentProfile = RuneScapeProfileType.getCurrent(client);
+		boolean isStandardProfile = currentProfile == RuneScapeProfileType.STANDARD;
+		boolean profileChanged = isStandardProfile && currentProfile != lastProfile;
+		boolean dataAvailable = dataManager.getVarbitsToCheck() != null && dataManager.getVarpsToCheck() != null;
+		boolean isLoggedIn = client.getGameState() == GameState.LOGGED_IN;
+		
+		if (profileChanged && dataAvailable && isLoggedIn) {
+			// Profile change, we should clear the dataManager and do a new initial dump
+			log.debug("Profile changed to standard. Reloading all data and updating profile");
+			lastProfile = currentProfile;
 			dataManager.clearData();
 			dataManager.loadInitialData();
 		}
 	}
 
-
 	@Subscribe
-	public void onStatChanged(StatChanged statChanged)
-	{
-		if (statChanged.getSkill() == null)
+	public void onStatChanged(StatChanged statChanged) {
+		Skill skill = statChanged.getSkill();
+		if (skill == null) {
 			return;
-		Integer cachedLevel = skillLevelCache.get(statChanged.getSkill().getName());
-		if (cachedLevel == null || cachedLevel != statChanged.getLevel())
-		{
-			skillLevelCache.put(statChanged.getSkill().getName(), statChanged.getLevel());
-			dataManager.storeSkillChanged(statChanged.getSkill().getName(), statChanged.getLevel());
+		}
+		
+		String skillName = skill.getName();
+		int newLevel = statChanged.getLevel();
+		Integer cachedLevel = skillLevelCache.get(skillName);
+		
+		if (cachedLevel == null || cachedLevel != newLevel) {
+			skillLevelCache.put(skillName, newLevel);
+			dataManager.storeSkillChanged(skillName, newLevel);
 		}
 	}
 
 	@Subscribe
-	public void onLootReceived(final LootReceived event)
-	{
-		if (event.getType() != LootRecordType.NPC && event.getType() != LootRecordType.EVENT)
-		{
+	public void onLootReceived(final LootReceived event) {
+		LootRecordType eventType = event.getType();
+		if (eventType != LootRecordType.NPC && eventType != LootRecordType.EVENT) {
 			return;
 		}
 
-		if (dataManager.shouldTrackLoot(event.getName())) {
-			log.debug("Player killed " + event.getName());
+		String npcName = event.getName();
+		if (dataManager.shouldTrackLoot(npcName)) {
+			log.debug("Player killed {}", npcName);
 			dataManager.uploadLoot(event);
 		} else {
-			log.debug("Player killed " + event.getName() + " , nothing to log");
+			log.debug("Player killed {}, nothing to log", npcName);
 		}
 	}
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event) {
-		if (!event.getGroup().equals(CONFIG_GROUP))
-		{
+		if (!event.getGroup().equals(CONFIG_GROUP)) {
 			return;
 		}
 
+		// Update notice boards based on config
 		noticeBoardManager.unsetNoticeBoards();
 		if (config.highlightClan()) {
 			noticeBoardManager.setTOBNoticeBoard();
 			noticeBoardManager.setTOANoticeBoard();
 		}
 
+		// Update sync button based on config
 		if (config.showCollectionLogSyncButton()) {
 			syncButtonManager.startUp();
 		} else {

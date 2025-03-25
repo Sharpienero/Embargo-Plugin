@@ -7,7 +7,9 @@ import gg.embargo.DataManager;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.ItemID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
@@ -36,6 +38,12 @@ public class EmbargoPanel extends PluginPanel {
     @Inject
     private DataManager dataManager;
 
+    @Inject
+    private MissingRequirementsPanel missingRequirementsPanelX;
+
+    @Inject
+    private ClientThread clientThread;
+
     @Setter
     public boolean isLoggedIn = false;
 
@@ -56,7 +64,7 @@ public class EmbargoPanel extends PluginPanel {
     private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
     private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
     private final JLabel currentCALabel = new JLabel(htmlLabel("Current TA Tier:", " N/A"));
-    private final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+    final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
     private final Font smallFont = FontManager.getRunescapeSmallFont();
     final JPanel missingRequirementsContainer = new JPanel(new BorderLayout(5, 0));
 
@@ -72,7 +80,7 @@ public class EmbargoPanel extends PluginPanel {
 
     void setupVersionPanel() {
         //Set up Embargo Clan Version at top of Version panel
-        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.3.2"));
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.3.4"));
         version.setFont(smallFont);
 
         //Set version's font
@@ -133,14 +141,17 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     void setupMissingItemsPanel() {
+        if (client == null || client.getGameState() == GameState.LOADING || client.getGameState() == GameState.LOGIN_SCREEN) {
+            missingRequirementsContainer.removeAll();
+            this.remove(missingRequirementsContainer);
+            this.revalidate();
+        }
+        this.add(missingRequirementsContainer);
+        this.revalidate();
+        String a = String.valueOf(missingRequiredItemsLabel);
         missingRequirementsContainer.setBorder(new EmptyBorder(7, 7, 7, 7));
         missingRequirementsContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        playerNameLabel.setFont(FontManager.getRunescapeSmallFont());
-        playerNameLabel.setForeground(Color.WHITE);
-        playerNameLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
-
-        missingRequirementsContainer.add(playerNameLabel, BorderLayout.NORTH);
         missingRequirementsContainer.setFont(FontManager.getRunescapeSmallFont());
         missingRequirementsContainer.setForeground(Color.WHITE);
         missingRequirementsContainer.add(missingRequirementsPanel);
@@ -148,12 +159,6 @@ public class EmbargoPanel extends PluginPanel {
         missingRequirementsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         missingRequirementsPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
         missingRequirementsPanel.setLayout(new GridLayout(1, 1));
-
-        missingRequiredItemsLabel.setFont(FontManager.getRunescapeSmallFont());
-        missingRequiredItemsLabel.setForeground(Color.WHITE);
-        missingRequiredItemsLabel.setHorizontalAlignment(JLabel.LEFT);
-
-        missingRequirementsPanel.add(missingRequiredItemsLabel, BorderLayout.NORTH);
 
         //Push text to top of component
         this.add(missingRequirementsContainer, BorderLayout.NORTH);
@@ -164,7 +169,6 @@ public class EmbargoPanel extends PluginPanel {
         this.add(versionPanel, BorderLayout.NORTH);
         setupMissingItemsPanel();
         this.add(this.setUpQuickLinks(), BorderLayout.SOUTH);
-
     }
 
     void setupSidePanel() {
@@ -184,6 +188,7 @@ public class EmbargoPanel extends PluginPanel {
     public void updateLoggedIn(boolean scheduled) {
         if (!isLoggedIn || scheduled) {
             if (client != null && client.getLocalPlayer() != null) {
+                this.isLoggedIn = true;
                 var username = client.getLocalPlayer().getName();
                 loggedLabel.setText(htmlLabel("Signed in as ", " " + username));
 
@@ -226,26 +231,25 @@ public class EmbargoPanel extends PluginPanel {
                     var displayCAName = String.valueOf(getCurrentCAName).replace("\"", "");
                     displayCAName = displayCAName.replace(" Combat Achievement", "");
 
-                    JsonElement nextRankName = nextRank.get("name");
-
                     currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
-                    //Set Missing Gear Requirements Label to display missing gear
-                    StringBuilder missingGearReqsString = new StringBuilder();
-                    missingGearReqsString.append("<html>");
-                    for (int i = 0; i < missingGearReqs.size(); i++) {
-                        missingGearReqsString.append("<div>- ").append(missingGearReqs.get(i).getAsString()).append("</div>");
-                    }
-
-                    missingGearReqsString.append("<html>");
 
                     //Build out the missing requirements panel
                     if (missingGearReqs.size() > 0) {
-                        missingRequiredItemsLabel.setText(missingGearReqsString.toString());
-                        //append panel under missingRequiredItemsLabel
-                        missingRequiredItemsLabel.setForeground(Color.LIGHT_GRAY);
-                        missingRequirementsPanel.add(missingRequiredItemsLabel);
+                        for (JsonElement mi : missingGearReqs) {
+                            clientThread.invokeLater(() ->
+                                    missingRequirementsPanelX.addMissingItem(String.valueOf(mi), missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
+                        }
+
+                        // Clear the panel first
+                        missingRequirementsPanel.removeAll();
                         
+                        // Add only the missingRequirementsPanelX (not the label)
+                        missingRequirementsPanel.add(missingRequirementsPanelX);
+                        
+                        // Refresh the panel
+                        missingRequirementsPanel.revalidate();
+                        missingRequirementsPanel.repaint();
                     } else {
                         missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
                     }
@@ -262,25 +266,35 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     public void logOut() {
+        log.debug("inside of logOut()");
         this.isLoggedIn = false;
+
+        // Update labels
         emailLabel.setContentType("text/html");
         emailLabel.setText("Sign in to send data to Embargo.");
         loggedLabel.setText("Not signed in");
 
-        //Reset missing gear requirements
+        // Reset missing gear requirements
         missingRequiredItemsLabel.setText(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+        missingRequiredItemsLabel.setFont(smallFont);
+        missingRequiredItemsLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        missingRequirementsPanelX.clearItems();
 
-        //Set to NA
+        // Rebuild missing requirements panel
+        missingRequirementsContainer.removeAll();
+        missingRequirementsPanel.removeAll();
+        missingRequirementsPanel.add(missingRequiredItemsLabel);
+        missingRequirementsContainer.add(missingRequirementsPanel, BorderLayout.CENTER);
+
+        // Set to NA
         isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " No"));
         embargoScoreLabel.setText(htmlLabel("Embargo Score:", " N/A"));
         currentRankLabel.setText(htmlLabel("Current Rank:", " N/A"));
         accountScoreLabel.setText(htmlLabel("Account Score:", " N/A"));
         communityScoreLabel.setText(htmlLabel("Community Score:", " N/A"));
+        currentCALabel.setText(htmlLabel("Current TA Tier:", " N/A"));
 
-        //Add back email label
-        versionPanel.add(emailLabel);
-
-        //Unregister from the component
+        // Rebuild version panel
         versionPanel.remove(isRegisteredWithClanLabel);
         versionPanel.remove(embargoScoreLabel);
         versionPanel.remove(accountScoreLabel);
@@ -288,6 +302,31 @@ public class EmbargoPanel extends PluginPanel {
         versionPanel.remove(currentRankLabel);
         versionPanel.remove(currentCALabel);
 
+        // Make sure email label is added
+        if (!containsComponent(versionPanel, emailLabel)) {
+            versionPanel.add(emailLabel);
+        }
+
+        // Refresh UI
+        versionPanel.revalidate();
+        versionPanel.repaint();
+        missingRequirementsPanel.revalidate();
+        missingRequirementsPanel.repaint();
+        missingRequirementsContainer.revalidate();
+        missingRequirementsContainer.repaint();
+        this.revalidate();
+        this.repaint();
+    }
+
+    // Helper method to check if a container contains a component
+    private boolean containsComponent(Container container, Component component) {
+        Component[] components = container.getComponents();
+        for (Component c : components) {
+            if (c.equals(component)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void reset()
