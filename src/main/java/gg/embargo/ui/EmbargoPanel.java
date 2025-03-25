@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ItemID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
@@ -35,6 +36,12 @@ public class EmbargoPanel extends PluginPanel {
 
     @Inject
     private DataManager dataManager;
+
+    @Inject
+    private MissingRequirementsPanel missingRequirementsPanelX;
+
+    @Inject
+    private ClientThread clientThread;
 
     @Setter
     public boolean isLoggedIn = false;
@@ -133,6 +140,10 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     void setupMissingItemsPanel() {
+        String a = String.valueOf(missingRequiredItemsLabel);
+        log.debug("INSIDE OF SETUP MISSING ITEMS PANEL");
+        log.debug(a);
+        //missingRequirementsPanelX.addMissingItem();
         missingRequirementsContainer.setBorder(new EmptyBorder(7, 7, 7, 7));
         missingRequirementsContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
@@ -149,11 +160,11 @@ public class EmbargoPanel extends PluginPanel {
         missingRequirementsPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
         missingRequirementsPanel.setLayout(new GridLayout(1, 1));
 
-        missingRequiredItemsLabel.setFont(FontManager.getRunescapeSmallFont());
-        missingRequiredItemsLabel.setForeground(Color.WHITE);
-        missingRequiredItemsLabel.setHorizontalAlignment(JLabel.LEFT);
-
-        missingRequirementsPanel.add(missingRequiredItemsLabel, BorderLayout.NORTH);
+//        missingRequiredItemsLabel.setFont(FontManager.getRunescapeSmallFont());
+//        missingRequiredItemsLabel.setForeground(Color.WHITE);
+//        missingRequiredItemsLabel.setHorizontalAlignment(JLabel.LEFT);
+//
+//        missingRequirementsPanel.add(missingRequiredItemsLabel, BorderLayout.NORTH);
 
         //Push text to top of component
         this.add(missingRequirementsContainer, BorderLayout.NORTH);
@@ -164,7 +175,6 @@ public class EmbargoPanel extends PluginPanel {
         this.add(versionPanel, BorderLayout.NORTH);
         setupMissingItemsPanel();
         this.add(this.setUpQuickLinks(), BorderLayout.SOUTH);
-
     }
 
     void setupSidePanel() {
@@ -231,20 +241,29 @@ public class EmbargoPanel extends PluginPanel {
                     currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
                     //Set Missing Gear Requirements Label to display missing gear
-                    StringBuilder missingGearReqsString = new StringBuilder();
-                    missingGearReqsString.append("<html>");
-                    for (int i = 0; i < missingGearReqs.size(); i++) {
-                        missingGearReqsString.append("<div>- ").append(missingGearReqs.get(i).getAsString()).append("</div>");
-                    }
-
-                    missingGearReqsString.append("<html>");
+//                    StringBuilder missingGearReqsString = new StringBuilder();
+//                    missingGearReqsString.append("<html>");
+//                    for (int i = 0; i < missingGearReqs.size(); i++) {
+//                        missingGearReqsString.append("<div>- ").append(missingGearReqs.get(i).getAsString()).append("</div>");
+//                    }
+//
+//                    missingGearReqsString.append("<html>");
 
                     //Build out the missing requirements panel
                     if (missingGearReqs.size() > 0) {
-                        missingRequiredItemsLabel.setText(missingGearReqsString.toString());
+                        for (JsonElement mi : missingGearReqs) {
+                            log.debug("Setting a JsonElement");
+                            log.debug(String.valueOf(mi));
+
+                            clientThread.invokeLater(() ->
+                                    missingRequirementsPanelX.addMissingItem(String.valueOf(mi), "test"));
+                        }
+
+                        //missingRequiredItemsLabel.setText(missingGearReqsString.toString());
                         //append panel under missingRequiredItemsLabel
-                        missingRequiredItemsLabel.setForeground(Color.LIGHT_GRAY);
-                        missingRequirementsPanel.add(missingRequiredItemsLabel);
+                        //missingRequiredItemsLabel.setForeground(Color.LIGHT_GRAY);
+                        //missingRequirementsPanel.add(missingRequiredItemsLabel);
+                        missingRequirementsPanel.add(missingRequirementsPanelX);
                         
                     } else {
                         missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
@@ -269,6 +288,7 @@ public class EmbargoPanel extends PluginPanel {
 
         //Reset missing gear requirements
         missingRequiredItemsLabel.setText(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+        missingRequirementsPanelX.clearItems();
 
         //Set to NA
         isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " No"));
