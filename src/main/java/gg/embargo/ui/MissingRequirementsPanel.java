@@ -9,6 +9,7 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
+import net.runelite.http.api.item.ItemPrice;
 
 import javax.inject.Inject;
 import javax.swing.*;
@@ -25,7 +26,7 @@ import java.util.Objects;
 public class MissingRequirementsPanel extends PluginPanel {
     private static final String OSRS_WIKI_BASE_URL = "https://oldschool.runescape.wiki/w/";
     private static final int ITEMS_PER_ROW = 3;
-    private static final int ICON_SIZE = 25;
+    private static final int ICON_SIZE = 32;
     private static final int TOOLTIP_PADDING = 3;
 
     private final ItemManager itemManager;
@@ -82,17 +83,11 @@ public class MissingRequirementsPanel extends PluginPanel {
           if (!itemExists) {
               if (itemName.contains("Combat Achievement")) {
                   // Add combat achievement item
-                  missingItems.add(new MissingItem(itemName.replace("\"", ""), 27550, itemName + " are required to show your prowess", getHiltImageFromName(itemName.split(" ")[0])));
+                  missingItems.add(new MissingItem(itemName.replace("\"", ""), 27550,  getHiltImageFromName(itemName.split(" ")[0])));
                   updatePanel();
-                  return;
               } else {
-                  // get item id from name and build out the missingItems
-                  if (itemId == -1) {
-                      itemId = findItemIdByName(itemName);
-                  }
-                  
                   BufferedImage itemIcon = getItemIcon(itemId, itemName);
-                  missingItems.add(new MissingItem(itemName.replace("\"", ""), itemId, description, itemIcon));
+                  missingItems.add(new MissingItem(itemName.replace("\"", ""), itemId, itemIcon));
                   updatePanel();
               }
           } else {
@@ -247,7 +242,6 @@ public class MissingRequirementsPanel extends PluginPanel {
     private String buildTooltipText(MissingItem item) {
         return "<html><body style='padding: " + TOOLTIP_PADDING + "px;'>" +
                 "<div style='font-weight: bold; margin-bottom: 5px;'>" + item.getItemName() + "</div>" +
-                "<div>" + item.getDescription() + "</div>" +
                 "<div style='color: #99FFFF; margin-top: 5px; font-style: italic;'>Click to open wiki</div>" +
                 "</body></html>";
     }
@@ -257,39 +251,13 @@ public class MissingRequirementsPanel extends PluginPanel {
      */
         private int findItemIdByName(String itemName) {
             // Convert the search name to lowercase for case-insensitive comparison
-            String searchName = itemName.toLowerCase();
-        
-            // Search through the commonly used items first
-            // This is a list of common items we might want to check
-            int[] commonItemIds = {
-                7462,  // Barrows gloves
-                25731, // Book of the dead
-                12608, // Music cape
-                12609, // Music cape (t)
-                21791, // Imbued saradomin cape
-                21793, // Imbued guthix cape
-                21795, // Imbued zamorak cape
-                13280, // Max cape
-                21898, // Imbued max cape
-                // Add more common items as needed
-            };
-        
-            for (int itemId : commonItemIds) {
-                ItemComposition itemComp = itemManager.getItemComposition(itemId);
-                if (itemComp.getName().toLowerCase().equals(searchName)) {
-                    return itemId;
-                }
+            String searchName = itemName.replace("\"", "");
+            List<ItemPrice> itemPrices = itemManager.search(searchName);
+            if (itemPrices.isEmpty()) {
+                return -1;
             }
-        
-            // If we couldn't find it in common items, we could use the search API
-            // Note: This is a simplified approach and might not work for all items
-            // In a real implementation, you might want to maintain a mapping of names to IDs
-        
-            // As a fallback, we could search through a predefined list of items
-            // or use a more sophisticated approach like caching results
-        
-            // Return -1 to indicate "not found"
-            return -1;
+
+            return itemPrices.get(0).getId();
         }
 
 
@@ -299,16 +267,14 @@ public class MissingRequirementsPanel extends PluginPanel {
     private static class MissingItem {
         private final String itemName;
         private final int itemId;
-        private final String description;
 
         @Getter
         @Setter
         private BufferedImage icon;
 
-        public MissingItem(String itemName, int itemId, String description, BufferedImage icon) {
+        public MissingItem(String itemName, int itemId, BufferedImage icon) {
             this.itemName = itemName;
             this.itemId = itemId;
-            this.description = description;
             this.icon = icon;
         }
 
@@ -318,10 +284,6 @@ public class MissingRequirementsPanel extends PluginPanel {
 
         public int getItemId() {
             return itemId;
-        }
-
-        public String getDescription() {
-            return description;
         }
     }
 }
