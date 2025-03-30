@@ -28,6 +28,7 @@ package gg.embargo.collections;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import gg.embargo.EmbargoConfig;
+import gg.embargo.ui.EmbargoPanel;
 import gg.embargo.ui.SyncButtonManager;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -83,6 +84,9 @@ public class CollectionLogManager {
 
     @Inject
     private ScheduledExecutorService scheduledExecutorService;
+
+    @Inject
+    private EmbargoPanel embargoPanel;
 
     @Inject
     private Gson gson;
@@ -160,6 +164,7 @@ public class CollectionLogManager {
                 clogItemsBitSet.clear();
                 clogItemsCountSet.clear();
                 clogItemsCount = null;
+                embargoPanel.logOut();
                 break;
         }
     }

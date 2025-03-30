@@ -54,6 +54,9 @@ public class EmbargoPlugin extends Plugin {
 	private EmbargoConfig config;
 
 	@Inject
+	private EmbargoPanel embargoPanel;
+
+	@Inject
 	private NoticeBoardManager noticeBoardManager;
 
 	@Inject
@@ -140,6 +143,37 @@ public class EmbargoPlugin extends Plugin {
 		clogManager.shutDown();
 		untrackableItemManager.shutDown();
 		syncButtonManager.shutDown();
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event) {
+		if (event.getGameState() == GameState.LOGGED_IN) {
+			clientThread.invokeLater(() -> {
+				if (client == null) {
+					return false;
+				}
+
+				if (client.getLocalPlayer() != null) {
+					String username = client.getLocalPlayer().getName();
+					embargoPanel.updateLoggedIn(true);
+					if (dataManager.checkRegistered(username)) {
+						panel.updateLoggedIn(true);
+						return true;
+					}
+				} else {
+					return false;
+				}
+
+				return false;
+			});
+		}
+		else if (event.getGameState() == GameState.LOGIN_SCREEN) {
+			log.debug("User logged out");
+			if (embargoPanel == null) {
+				log.debug("embargoPanel is null!!!");
+			}
+			embargoPanel.logOut();
+		}
 	}
 
 	@Schedule(
@@ -292,10 +326,10 @@ public class EmbargoPlugin extends Plugin {
 		}
 
 		if (dataManager.shouldTrackLoot(event.getName())) {
-			log.debug("Player killed " + event.getName());
+            log.debug("Player killed {}", event.getName());
 			dataManager.uploadLoot(event);
 		} else {
-			log.debug("Player killed " + event.getName() + " , nothing to log");
+            log.debug("Player killed {} , nothing to log", event.getName());
 		}
 	}
 
