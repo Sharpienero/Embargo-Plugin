@@ -57,5 +57,15 @@ public interface EmbargoConfig extends Config
             section = collectionLogSettings
     )
     default boolean showCollectionLogSyncButton() { return true; }
+
+    @ConfigItem(
+        keyName = "enableClanEasterEggs",
+        name = "Enable Clan Easter Eggs",
+        description = "Enables fun item name replacements like 'Dragon warhammer' to 'Bonker'",
+        position = 3
+    )
+    default boolean enableClanEasterEggs() {
+        return true;
+    }
 }
 

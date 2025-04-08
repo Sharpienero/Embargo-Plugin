@@ -191,7 +191,7 @@ public class DataManager {
     public void uploadCollectionLogUnlock(String item, String player)
     {
         JsonObject payload = getClogUploadPayload(item, player);
-        log.debug(String.valueOf(payload));
+        //log.debug(String.valueOf(payload));
 
         okHttpClient.newCall(new Request.Builder().url(CLOG_UNLOCK_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
             @Override
@@ -504,7 +504,7 @@ public class DataManager {
             parent.addProperty("profile", r.name());
             parent.add("data", j);
         }
-        log.debug(parent.toString());
+        //log.debug(parent.toString());
         return parent;
     }
 
@@ -546,7 +546,7 @@ public class DataManager {
             return;
         }
 
-        log.debug("Submitting changed data to endpoint...");
+        //log.debug("Submitting changed data to endpoint...");
         JsonObject postRequestBody = convertToJson();
         Request request = new Request.Builder()
                 .url(UNTRACKABLE_POST_ENDPOINT)
@@ -594,7 +594,7 @@ public class DataManager {
     }
 
     protected void getManifest() {
-        log.debug("Getting manifest file...");
+        //log.debug("Getting manifest file...");
         try {
             Request r = new Request.Builder()
                     .url(MANIFEST_ENDPOINT)
@@ -656,7 +656,7 @@ public class DataManager {
     }
 
     protected int getVersion() {
-        log.debug("Attempting to get manifest version...");
+        //log.debug("Attempting to get manifest version...");
         Request request = new Request.Builder()
                 .url(MANIFEST_ENDPOINT)
                 .build();
@@ -788,7 +788,7 @@ public class DataManager {
     )
     public void resyncManifest()
     {
-        log.debug("Attempting to resync manifest");
+        //log.debug("Attempting to resync manifest");
         if (getVersion() != getLastManifestVersion())
         {
             getManifest();
@@ -807,12 +807,12 @@ public class DataManager {
             if (client.getLocalPlayer() != null) {
                 String username = client.getLocalPlayer().getName();
                 if (checkRegistered(username)) {
-                    log.debug("updateProfileAfterLoggedIn Member registered");
+                    //log.debug("updateProfileAfterLoggedIn Member registered");
                     embargoPanel.updateLoggedIn(true);
                 }
             }
         } else {
-            log.debug("User is hopping or logged out, do not send data");
+            //log.debug("User is hopping or logged out, do not send data");
             embargoPanel.isLoggedIn = false;
             embargoPanel.updateLoggedIn(false);
             embargoPanel.logOut();

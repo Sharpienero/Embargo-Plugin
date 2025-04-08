@@ -3,6 +3,7 @@ package gg.embargo;
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.ui.EmbargoPanel;
+import gg.embargo.ui.ItemRenameManager;
 import gg.embargo.ui.SyncButtonManager;
 import gg.embargo.noticeboard.NoticeBoardManager;
 import gg.embargo.untrackables.UntrackableItemManager;
@@ -76,6 +77,9 @@ public class EmbargoPlugin extends Plugin {
 	@Inject
 	private UntrackableItemManager untrackableItemManager;
 
+	@Inject
+	private ItemRenameManager itemRenameManager;
+
 	private RuneScapeProfileType lastProfile;
 
 	private NavigationButton navButton;
@@ -98,6 +102,8 @@ public class EmbargoPlugin extends Plugin {
 		dataManager.resetVarbsAndVarpsToCheck();
 		skillLevelCache.clear();
 		dataManager.getManifest();
+
+		itemRenameManager.setupMenuRenames();
 
 		if (client != null) {
 			if (client.getGameState() == GameState.LOGGED_IN) {
@@ -136,6 +142,8 @@ public class EmbargoPlugin extends Plugin {
 		if (config != null && config.highlightClan()) {
 			noticeBoardManager.setNoticeBoards();
 		}
+
+		itemRenameManager.startUp();
 	}
 
 	@Override
@@ -157,6 +165,7 @@ public class EmbargoPlugin extends Plugin {
 		clogManager.shutDown();
 		untrackableItemManager.shutDown();
 		syncButtonManager.shutDown();
+		itemRenameManager.shutDown();
 	}
 
 	@Subscribe
@@ -411,6 +420,15 @@ public class EmbargoPlugin extends Plugin {
 			syncButtonManager.startUp();
 		} else {
 			syncButtonManager.shutDown();
+		}
+		
+		// Handle item rename config changes
+		if (event.getKey().equals("enableClanEasterEggs")) {
+			if (config.enableClanEasterEggs()) {
+				itemRenameManager.startUp();
+			} else {
+				itemRenameManager.shutDown();
+			}
 		}
 	}
 }
