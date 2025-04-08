@@ -78,9 +78,6 @@ public class EmbargoPlugin extends Plugin {
 
 	private RuneScapeProfileType lastProfile;
 
-	@Getter
-	private EmbargoPanel panel;
-
 	private NavigationButton navButton;
 
 	private final Map<String, Integer> skillLevelCache = new HashMap<>();
@@ -101,19 +98,27 @@ public class EmbargoPlugin extends Plugin {
 		dataManager.resetVarbsAndVarpsToCheck();
 		skillLevelCache.clear();
 		dataManager.getManifest();
+
+		if (client != null) {
+			if (client.getGameState() == GameState.LOGGED_IN) {
+				if (dataManager.checkRegistered(client.getLocalPlayer().getName())) {
+					embargoPanel.updateLoggedIn(false);
+				}
+			}
+		}
 	}
 
 	private void initializePanel() {
-		panel = injector.getInstance(EmbargoPanel.class);
-		panel.init();
-		panel.updateLoggedIn(false);
+		embargoPanel = injector.getInstance(EmbargoPanel.class);
+		embargoPanel.init();
+		embargoPanel.updateLoggedIn(false);
 		
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
 		navButton = NavigationButton.builder()
 				.tooltip("Embargo Clan")
 				.icon(icon)
 				.priority(0)
-				.panel(panel)
+				.panel(embargoPanel)
 				.build();
 
 		clientToolbar.addNavigation(navButton);
@@ -138,12 +143,12 @@ public class EmbargoPlugin extends Plugin {
 		log.info("Embargo Clan plugin stopped!");
 		
 		dataManager.clearData();
-		panel.reset();
+		embargoPanel.reset();
 		clientToolbar.removeNavigation(navButton);
 		
 		shutDownManagers();
-		
-		panel = null;
+
+		embargoPanel = null;
 		navButton = null;
 	}
 	
@@ -157,8 +162,10 @@ public class EmbargoPlugin extends Plugin {
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event) {
 		GameState gameState = event.getGameState();
+		if (gameState == GameState.LOADING) return;
 		
-		if (gameState == GameState.LOGGED_IN) {
+		if (gameState == GameState.LOGGED_IN && !embargoPanel.isLoggedIn) {
+			log.debug("inside of condition, handling loggedIn");
 			handleLoggedIn();
 		} else if (gameState == GameState.LOGIN_SCREEN) {
 			handleLoggedOut();
@@ -174,9 +181,8 @@ public class EmbargoPlugin extends Plugin {
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				String username = localPlayer.getName();
-				embargoPanel.updateLoggedIn(true);
 				if (dataManager.checkRegistered(username)) {
-					panel.updateLoggedIn(true);
+					embargoPanel.updateLoggedIn(true);
 					return true;
 				}
 			}
@@ -186,11 +192,25 @@ public class EmbargoPlugin extends Plugin {
 	
 	private void handleLoggedOut() {
 		log.debug("User logged out");
+    
+		// Clear both panel references
 		if (embargoPanel != null) {
 			embargoPanel.logOut();
 		} else {
 			log.debug("embargoPanel is null!!!");
 		}
+    
+		// Also clear the panel reference (which is different from embargoPanel)
+		if (embargoPanel != null) {
+			embargoPanel.reset();
+			embargoPanel.updateLoggedIn(false);
+		}
+    
+		// Clear data in DataManager to ensure complete reset
+		dataManager.clearData();
+    
+		// Reset skill cache
+		skillLevelCache.clear();
 	}
 
 	@Schedule(
@@ -209,7 +229,7 @@ public class EmbargoPlugin extends Plugin {
 			updatePlayerRegistrationStatus();
 		} else {
 			log.debug("User is hopping or logged out, do not send data");
-			panel.logOut();
+			embargoPanel.logOut();
 		}
 	}
 	
@@ -219,7 +239,7 @@ public class EmbargoPlugin extends Plugin {
 			String username = localPlayer.getName();
 			if (dataManager.checkRegistered(username)) {
 				log.debug("updateProfileAfterLoggedIn Member registered");
-				panel.updateLoggedIn(true);
+				embargoPanel.updateLoggedIn(true);
 			}
 		}
 	}
@@ -232,7 +252,7 @@ public class EmbargoPlugin extends Plugin {
 	public void checkProfileChanged() {
 		Player localPlayer = client.getLocalPlayer();
 		if (localPlayer != null && client.getGameState() == GameState.LOGGED_IN) {
-			panel.updateLoggedIn(true);
+			embargoPanel.updateLoggedIn(true);
 			clientThread.invokeLater(this::checkProfileChange);
 		}
 	}

@@ -157,10 +157,11 @@ public class CollectionLogManager {
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         GameState state = gameStateChanged.getGameState();
         switch (state) {
-            // When hopping, we need to clear any state related to the player
+            // When hopping or logging out, we need to clear any state related to the player
             case HOPPING:
             case LOGGING_IN:
             case CONNECTION_LOST:
+            case LOGIN_SCREEN:  // Add this case to handle explicit logout
                 clogItemsBitSet.clear();
                 clogItemsCountSet.clear();
                 clogItemsCount = null;
