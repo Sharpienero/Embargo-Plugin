@@ -152,11 +152,6 @@ public class EmbargoPanel extends PluginPanel {
         missingRequirementsContainer.setBorder(new EmptyBorder(7, 7, 7, 7));
         missingRequirementsContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        //playerNameLabel.setFont(FontManager.getRunescapeSmallFont());
-        //playerNameLabel.setForeground(Color.WHITE);
-        //playerNameLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
-
-        //missingRequirementsContainer.add(playerNameLabel, BorderLayout.NORTH);
         missingRequirementsContainer.setFont(FontManager.getRunescapeSmallFont());
         missingRequirementsContainer.setForeground(Color.WHITE);
         missingRequirementsContainer.add(missingRequirementsPanel);
@@ -164,12 +159,6 @@ public class EmbargoPanel extends PluginPanel {
         missingRequirementsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         missingRequirementsPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
         missingRequirementsPanel.setLayout(new GridLayout(1, 1));
-
-//        missingRequiredItemsLabel.setFont(FontManager.getRunescapeSmallFont());
-//        missingRequiredItemsLabel.setForeground(Color.WHITE);
-//        missingRequiredItemsLabel.setHorizontalAlignment(JLabel.LEFT);
-//
-//        missingRequirementsPanel.add(missingRequiredItemsLabel, BorderLayout.NORTH);
 
         //Push text to top of component
         this.add(missingRequirementsContainer, BorderLayout.NORTH);
