@@ -58,11 +58,19 @@ public interface EmbargoConfig extends Config
     )
     default boolean showCollectionLogSyncButton() { return true; }
 
+    @ConfigSection(
+            name = "Clan Easter Eggs",
+            description = "Enables fun item name replacements like 'Dragon warhammer' to 'Bonker'",
+            position = 3
+    )
+    String easterEggSettings = "EasterEggSettings";
+
     @ConfigItem(
         keyName = "enableClanEasterEggs",
-        name = "Enable Clan Easter Eggs",
+        name = "Enable Easter Eggs",
         description = "Enables fun item name replacements like 'Dragon warhammer' to 'Bonker'",
-        position = 3
+        position = 3,
+        section = easterEggSettings
     )
     default boolean enableClanEasterEggs() {
         return true;
