@@ -33,10 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.annotations.Component;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.eventbus.Subscribe;
 
 @Slf4j
@@ -111,7 +111,7 @@ public class SyncButtonManager {
     enum Screen
     {
         // First number is col log container (inner) and second is search button id
-        COLLECTION_LOG(40697944, 40697932, ComponentID.COLLECTION_LOG_CONTAINER),
+        COLLECTION_LOG(40697944, 40697932, InterfaceID.Collection.INFINITY),
         ;
 
         @Getter(onMethod_ = @Component)
