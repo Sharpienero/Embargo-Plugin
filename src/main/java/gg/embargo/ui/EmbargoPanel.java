@@ -8,7 +8,6 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.ItemID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.info.JRichTextPane;
@@ -25,7 +24,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
 
 @Slf4j
 public class EmbargoPanel extends PluginPanel {
@@ -49,7 +47,7 @@ public class EmbargoPanel extends PluginPanel {
 
 
     // Keep track of all boxes
-    private final ArrayList<ItemID> items = new ArrayList<>();
+    //private final ArrayList<ItemID> items = new ArrayList<>();
     JPanel versionPanel = new JPanel();
     JPanel missingRequirementsPanel = new JPanel();
     private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
@@ -68,7 +66,7 @@ public class EmbargoPanel extends PluginPanel {
     private final Font smallFont = FontManager.getRunescapeSmallFont();
     final JPanel missingRequirementsContainer = new JPanel(new BorderLayout(5, 0));
 
-    final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
+    //final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
     @Inject
     private EmbargoPanel() {
     }
@@ -148,7 +146,6 @@ public class EmbargoPanel extends PluginPanel {
         }
         this.add(missingRequirementsContainer);
         this.revalidate();
-        String a = String.valueOf(missingRequiredItemsLabel);
         missingRequirementsContainer.setBorder(new EmptyBorder(7, 7, 7, 7));
         missingRequirementsContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
@@ -221,7 +218,8 @@ public class EmbargoPanel extends PluginPanel {
                     communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
                     //JsonArray currentGearReqs = embargoProfileData.getAsJsonArray("currentGearRequirements");
                     JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
-                    JsonObject nextRank = embargoProfileData.getAsJsonObject("nextRank");
+
+                    //JsonObject nextRank = embargoProfileData.getAsJsonObject("nextRank");
                     JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
                     JsonElement currentRankName = currentRank.get("name");
 

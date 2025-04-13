@@ -54,7 +54,6 @@ import java.util.stream.Collectors;
 public class CollectionLogManager {
 
     private final int VARBITS_ARCHIVE_ID = 14;
-    private final String CONFIG_GROUP = "embargo";
     private static final String PLUGIN_USER_AGENT = "Embargo Runelite Plugin";
 
     private static final String MANIFEST_URL = "https://embargo.gg/api/runelite/manifest";
@@ -244,12 +243,6 @@ public class CollectionLogManager {
         submitPlayerData(profileKey, newPlayerData, oldPlayerData);
     }
 
-    public void manifestTask() {
-        if (client.getGameState() == GameState.LOGGED_IN) {
-            checkManifest();
-        }
-    }
-
     private PlayerData getPlayerData() {
         PlayerData out = new PlayerData();
 
@@ -258,11 +251,6 @@ public class CollectionLogManager {
 
         out.collectionLogItemCount = clogItemsCount;
         return out;
-    }
-
-    private void subtract(PlayerData newPlayerData, PlayerData oldPlayerData) {
-        if (newPlayerData.collectionLogSlots.equals(oldPlayerData.collectionLogSlots))
-            newPlayerData.clearCollectionLog();
     }
 
     private void merge(PlayerData oldPlayerData, PlayerData delta) {
@@ -300,15 +288,13 @@ public class CollectionLogManager {
 
             @Override
             public void onResponse(Call call, Response response) {
-                try {
+                try (response) {
                     if (!response.isSuccessful()) {
                         log.debug("Failed to submit: {}", response.code());
                         return;
                     }
                     merge(old, delta);
                     cyclesSinceSuccessfulCall = 0;
-                } finally {
-                    response.close();
                 }
             }
         });
@@ -412,21 +398,9 @@ public class CollectionLogManager {
     }
 
 
-    private int getVarbitValue(int varbitId) {
-        VarbitComposition v = varbitCompositions.get(varbitId);
-        if (v == null) {
-            return -1;
-        }
-
-        int value = client.getVarpValue(v.getIndex());
-        int lsb = v.getLeastSignificantBit();
-        int msb = v.getMostSignificantBit();
-        int mask = (1 << ((msb - lsb) + 1)) - 1;
-        return (value >> lsb) & mask;
-    }
-
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
+        String CONFIG_GROUP = "embargo";
         if (!event.getGroup().equals(CONFIG_GROUP))
         {
             return;

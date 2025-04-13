@@ -3,7 +3,7 @@ package gg.embargo;
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.ui.EmbargoPanel;
-import gg.embargo.ui.ItemRenameManager;
+import gg.embargo.eastereggs.ItemRenameManager;
 import gg.embargo.ui.SyncButtonManager;
 import gg.embargo.noticeboard.NoticeBoardManager;
 import gg.embargo.untrackables.UntrackableItemManager;

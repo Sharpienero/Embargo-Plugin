@@ -1,4 +1,4 @@
-package gg.embargo.ui;
+package gg.embargo.eastereggs;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -20,7 +20,6 @@ import java.util.Set;
 @Singleton
 public class ItemRenameManager {
 
-    private final Client client;
     private final EventBus eventBus;
     private final EmbargoConfig config;
 
@@ -43,12 +42,11 @@ public class ItemRenameManager {
             .put("Fire max cape", "Special cape")
             .build();
 
-    // Map for custom remappings (includes defaults plus any runtime additions)
+    // Map for custom renamings
     private final Map<String, String> customItemRemap = new HashMap<>();
 
     @Inject
-    public ItemRenameManager(Client client, EventBus eventBus, EmbargoConfig config) {
-        this.client = client;
+    public ItemRenameManager(EventBus eventBus, EmbargoConfig config) {
         this.eventBus = eventBus;
         this.config = config;
     }
@@ -79,16 +77,6 @@ public class ItemRenameManager {
     public void setupMenuRenames() {
         customItemRemap.clear();
         customItemRemap.putAll(DEFAULT_ITEM_REMAP);
-    }
-
-    /**
-     * Adds a custom item remapping at runtime.
-     * 
-     * @param originalName The original item name
-     * @param newName The new name to display
-     */
-    public void addCustomRemap(String originalName, String newName) {
-        customItemRemap.put(originalName, newName);
     }
 
     /**

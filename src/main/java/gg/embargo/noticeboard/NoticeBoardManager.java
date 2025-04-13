@@ -48,16 +48,9 @@ public class NoticeBoardManager {
         this.eventBus = eventBus;
     }
 
-    @Provides
-    EmbargoConfig getConfig(ConfigManager configManager)
-    {
-        return configManager.getConfig(EmbargoConfig.class);
-    }
-
     private static final int DEFAULT_RGB = 0xff981f;
     private static final int STARTING_PARTY_CHILD_ID = 17;
     private static final int ENDING_PARTY_CHILD_ID = 62;
-    private final String CONFIG_GROUP = "embargo";
 
     private void setNoticeBoardWidget(int parent, int index, int clanColor) {
         for (int childID = STARTING_PARTY_CHILD_ID; childID < ENDING_PARTY_CHILD_ID; ++childID) {
@@ -165,6 +158,7 @@ public class NoticeBoardManager {
 
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
+        String CONFIG_GROUP = "embargo";
         if (!event.getGroup().equals(CONFIG_GROUP))
         {
             return;

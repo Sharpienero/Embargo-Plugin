@@ -128,7 +128,7 @@ public class DataManager {
     private static final String MINIGAME_COMPLETION_ENDPOINT = API_URI + APIRoutes.MINIGAME_COMPLETE;
     private static final String CLOG_UNLOCK_ENDPOINT = API_URI + APIRoutes.UPLOAD_CLOG;
 
-    public static ArrayList BossesToTrack = null;
+    public static ArrayList<String> BossesToTrack = null;
 
     public void storeVarbitChanged(int varbIndex, int varbValue) {
         synchronized (this) {
@@ -142,7 +142,7 @@ public class DataManager {
     }
 
     public List<Player> getSurroundingPlayers() {
-        return client.getPlayers();
+        return (List<Player>) client.getTopLevelWorldView().players();
     }
 
     public boolean shouldTrackLoot(String bossName) {
@@ -724,7 +724,7 @@ public class DataManager {
         if (oldVarps == null)
             setupVarpTracking();
 
-        int varpIndexChanged = varbitChanged.getIndex();
+        int varpIndexChanged = varbitChanged.getVarpId();
         if (varpsToCheck.contains(varpIndexChanged))
         {
             storeVarpChanged(varpIndexChanged, client.getVarpValue(varpIndexChanged));
