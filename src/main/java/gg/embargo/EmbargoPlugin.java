@@ -3,6 +3,9 @@ package gg.embargo;
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.eastereggs.NPCRenameManager;
+import gg.embargo.eastereggs.sounds.Sound;
+import gg.embargo.eastereggs.sounds.SoundEngine;
+import gg.embargo.eastereggs.sounds.TobChestLight;
 import gg.embargo.manifest.Manifest;
 import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
@@ -31,6 +34,7 @@ import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.io.InputStream;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
@@ -83,13 +87,15 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private ItemRenameManager itemRenameManager;
+
 	@Inject
 	private NPCRenameManager npcRenameManager;
 
+	@Inject
+	private TobChestLight tobChestLight;
 
 	@Inject
 	public ManifestManager manifestManager;
-
 
 	private RuneScapeProfileType lastProfile;
 
@@ -467,5 +473,28 @@ public class EmbargoPlugin extends Plugin {
 				npcRenameManager.shutDown();
 			}
 		}
+	}
+
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		tobChestLight.onVarbitChanged(event);
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event) {
+		tobChestLight.onGameTick(event);
+	}
+
+	@Subscribe
+	private void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		tobChestLight.onGameObjectSpawned(event);
+	}
+
+	@Subscribe
+	private void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		tobChestLight.onGameObjectDespawned(event);
 	}
 }
