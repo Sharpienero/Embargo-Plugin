@@ -2,6 +2,8 @@ package gg.embargo;
 
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
+import gg.embargo.manifest.Manifest;
+import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
 import gg.embargo.eastereggs.ItemRenameManager;
 import gg.embargo.ui.SyncButtonManager;
@@ -31,6 +33,7 @@ import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,6 +82,10 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private ItemRenameManager itemRenameManager;
+
+	@Inject
+	public ManifestManager manifestManager;
+
 
 	private RuneScapeProfileType lastProfile;
 
@@ -193,6 +200,8 @@ public class EmbargoPlugin extends Plugin {
 				if (dataManager.checkRegistered(username)) {
 					embargoPanel.updateLoggedIn(true);
 					return true;
+
+					
 				}
 			}
 			return false;
@@ -227,6 +236,19 @@ public class EmbargoPlugin extends Plugin {
 			unit = ChronoUnit.SECONDS,
 			asynchronous = true
 	)
+	public void ensureLatestManifest() {
+		if (manifestManager.getLatestManifest() != null) {
+			if (!(manifestManager.getLastCheckedManifestVersion() == manifestManager.getLatestManifest().getVersion())) {
+				manifestManager.getLatestManifest();
+			}
+		}
+	}
+
+	@Schedule(
+			period = SECONDS_BETWEEN_UPLOADS,
+			unit = ChronoUnit.SECONDS,
+			asynchronous = true
+	)
 	public void submitToAPI() {
 		if (client == null) {
 			return;
@@ -237,7 +259,7 @@ public class EmbargoPlugin extends Plugin {
 			dataManager.submitToAPI();
 			updatePlayerRegistrationStatus();
 		} else {
-			log.debug("User is hopping or logged out, do not send data");
+			//log.debug("User is hopping or logged out, do not send data");
 			embargoPanel.logOut();
 		}
 	}
@@ -300,10 +322,10 @@ public class EmbargoPlugin extends Plugin {
 
 	@Subscribe
 	public void onChatMessage(ChatMessage chatMessage) {
+		if (client == null || manifestManager.getLatestManifest() == null) return;
+
 		Player player = client.getLocalPlayer();
-		if (player == null) {
-			return;
-		}
+		if (player == null) return;
 
 		String message = chatMessage.getMessage();
 		ChatMessageType messageType = chatMessage.getType();
@@ -327,26 +349,31 @@ public class EmbargoPlugin extends Plugin {
 		if (messageType == ChatMessageType.GAMEMESSAGE || 
 			messageType == ChatMessageType.FRIENDSCHATNOTIFICATION || 
 			messageType == ChatMessageType.SPAM) {
-			handleActivityCompletion(message);
+
+			if (processCompletionMessages(manifestManager.getLatestManifest().getRaidCompletionMessages(), message,
+					(name, _message) -> dataManager.uploadRaidCompletion(name, _message))) {
+				//return early as it saves time in case it gets processed here, otherwise it's most likely a minigame completion message or unrelated
+				return;
+			}
+
+			processCompletionMessages(manifestManager.getLatestManifest().minigameCompletionMessages, message,
+					(name, _message) -> dataManager.uploadMinigameCompletion(name, _message));
 		}
 	}
 
-	public void handleActivityCompletion(String chatMessage) {
-		// Check for raid completions
-		for (RaidCompletionMessages raid : RaidCompletionMessages.values()) {
-			if (chatMessage.contains(raid.getCompletionMessage())) {
-				dataManager.uploadRaidCompletion(raid.name(), chatMessage);
-				return; // Return early once we've found a match
+	private boolean processCompletionMessages(Map<String, String> messageMap, String chatMessage, 
+											 BiConsumer<String, String> uploadAction) {
+		for (Map.Entry<String, String> entry : messageMap.entrySet()) {
+			String name = entry.getKey();
+			String completionMessage = entry.getValue();
+			
+			if (chatMessage.contains(completionMessage)) {
+				log.debug("Sending API request for completed activity");
+				uploadAction.accept(name, chatMessage);
+				return true;
 			}
 		}
-
-		// Check for minigame completions
-		for (MinigameCompletionMessages minigame : MinigameCompletionMessages.values()) {
-			if (chatMessage.contains(minigame.getCompletionMessage())) {
-				dataManager.uploadMinigameCompletion(minigame.name(), chatMessage);
-				return; // Return early once we've found a match
-			}
-		}
+		return false;
 	}
 
 	public void checkProfileChange() {

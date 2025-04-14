@@ -3,6 +3,7 @@ package gg.embargo.eastereggs;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import gg.embargo.EmbargoConfig;
+import gg.embargo.manifest.ManifestManager;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.MenuEntryAdded;
@@ -22,6 +23,8 @@ public class ItemRenameManager {
 
     private final EventBus eventBus;
     private final EmbargoConfig config;
+    private final ManifestManager manifestManager;
+    private boolean manifestFetchAttempted = false;
 
     private static final Set<MenuAction> ITEM_MENU_ACTIONS = ImmutableSet.of(
             MenuAction.GROUND_ITEM_FIRST_OPTION, MenuAction.GROUND_ITEM_SECOND_OPTION,
@@ -34,21 +37,16 @@ public class ItemRenameManager {
             MenuAction.WIDGET_TARGET_ON_WIDGET);
 
     // Default item name remappings
-    private static final ImmutableMap<String, String> DEFAULT_ITEM_REMAP = ImmutableMap.<String, String>builder()
-            .put("Dragon warhammer", "Bonker")
-            .put("Zaryte crossbow", "Kitty ear crossbow (MEOW)")
-            .put("Ghommal's_lucky_penny", "H4vell's lucky quid")
-            .put("Fire cape", "Cheese cape")
-            .put("Fire max cape", "Special cape")
-            .build();
+    private static final ImmutableMap<String, String> DEFAULT_ITEM_REMAP = ImmutableMap.<String, String>builder().build();
 
     // Map for custom renamings
     private final Map<String, String> customItemRemap = new HashMap<>();
 
     @Inject
-    public ItemRenameManager(EventBus eventBus, EmbargoConfig config) {
+    public ItemRenameManager(EventBus eventBus, EmbargoConfig config, ManifestManager manifestManager) {
         this.eventBus = eventBus;
         this.config = config;
+        this.manifestManager = manifestManager;
     }
 
     @Subscribe
@@ -57,6 +55,18 @@ public class ItemRenameManager {
         if (!config.enableClanEasterEggs()) {
             return;
         }
+
+        if (manifestManager.getManifest() == null) {
+            manifestManager.getLatestManifest();
+            return;
+        }
+
+        // Check if manifest is empty and fetch if needed
+        if (manifestManager.getManifest().getItemRenames() == null) {
+            manifestManager.getLatestManifest();
+        }
+
+        parseManifest();
         
         MenuEntry entry = event.getMenuEntry();
         if (ITEM_MENU_ACTIONS.contains(entry.getType())) {
@@ -67,6 +77,7 @@ public class ItemRenameManager {
     public void startUp() {
         eventBus.register(this);
         setupMenuRenames();
+        manifestManager.getLatestManifest(); // Fetch manifest on startup
     }
 
     public void shutDown() {
@@ -79,11 +90,26 @@ public class ItemRenameManager {
         customItemRemap.putAll(DEFAULT_ITEM_REMAP);
     }
 
+    public void parseManifest() {
+        if (manifestManager.getManifest().getItemRenames() == null || manifestManager.getManifest().getItemRenames().isEmpty()) {
+            if (!manifestFetchAttempted) {
+                log.debug("manifest.itemRenames is empty, attempting to refetch");
+            }
+            return;
+        }
+
+        for (Map.Entry<String, String> entry : manifestManager.getManifest().getItemRenames().entrySet()) {
+            String originalName = entry.getKey();
+            String newName = entry.getValue();
+            customItemRemap.put(originalName, newName);
+        }
+    }
+
     /**
      * Remaps a menu entry's text if the target matches an entry in the provided map.
      * 
-     * @param menuEntry The menu entry to potentially modify
-     * @param map The map of original names to replacement names
+     * @param menuEntry The menu entry to modify
+     * @param map The map of item names to replacement item names
      */
     private void remapMenuEntryText(MenuEntry menuEntry, Map<String, String> map) {
         String target = menuEntry.getTarget();

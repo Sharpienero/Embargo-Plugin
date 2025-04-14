@@ -27,7 +27,10 @@ package gg.embargo;
 
 import com.google.common.collect.HashMultimap;
 import com.google.gson.*;
+import gg.embargo.collections.CollectionLogManager;
+import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
+import gg.embargo.manifest.Manifest;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -79,6 +82,12 @@ public class DataManager {
     @Getter
     @Setter
     private HashSet<Integer> varbitsToCheck;
+
+    @Inject
+    private Manifest manifest;
+
+    @Inject
+    private ManifestManager manifestManager;
 
     @Getter
     @Setter
@@ -502,9 +511,9 @@ public class DataManager {
 
             parent.addProperty("username", client.getLocalPlayer().getName());
             parent.addProperty("profile", r.name());
+            parent.addProperty("version", manifestManager.getLastCheckedManifestVersion());
             parent.add("data", j);
         }
-        //log.debug(parent.toString());
         return parent;
     }
 
@@ -578,6 +587,8 @@ public class DataManager {
 
     public void loadInitialData()
     {
+        manifestManager.getLatestManifest();
+
         for (int varbIndex : varbitsToCheck)
         {
             storeVarbitChanged(varbIndex, client.getVarbitValue(varbIndex));
@@ -593,6 +604,7 @@ public class DataManager {
         }
     }
 
+    //NEEDS TO BE MODIFIED TO USE NEW MANIFEST OBJECT STUFF
     protected void getManifest() {
         //log.debug("Getting manifest file...");
         try {
@@ -655,13 +667,12 @@ public class DataManager {
         }
     }
 
+    //NEEDS TO BE MODIFIED TO USE NEW MANIFEST OBJECT STUFF
     protected int getVersion() {
         //log.debug("Attempting to get manifest version...");
         Request request = new Request.Builder()
                 .url(MANIFEST_ENDPOINT)
                 .build();
-
-        var serverManifestVersion = -1;
 
         try {
             okHttpClient.newCall(request).enqueue(new Callback() {
@@ -686,8 +697,8 @@ public class DataManager {
                             try {
                                 try {
                                     int manifestVersion = j.get("version").getAsInt();
-                                    if (getLastManifestVersion() != manifestVersion) {
-                                        setLastManifestVersion(manifestVersion);
+                                    if (manifestManager.getLatestManifest().getVersion() != manifestVersion) {
+                                        //update to use new manifest stuff
                                         clientThread.invoke(() -> loadInitialData());
                                     }
                                 } catch (UnsupportedOperationException | NullPointerException exception) {
@@ -789,7 +800,7 @@ public class DataManager {
     public void resyncManifest()
     {
         //log.debug("Attempting to resync manifest");
-        if (getVersion() != getLastManifestVersion())
+        if (manifestManager.getManifest().getVersion() != getLastManifestVersion())
         {
             getManifest();
         }

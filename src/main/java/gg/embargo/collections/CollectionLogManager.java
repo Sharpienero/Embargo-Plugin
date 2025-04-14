@@ -28,6 +28,8 @@ package gg.embargo.collections;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import gg.embargo.EmbargoConfig;
+import gg.embargo.manifest.Manifest;
+import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
 import gg.embargo.ui.SyncButtonManager;
 import lombok.extern.slf4j.Slf4j;
@@ -56,12 +58,13 @@ public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
     private static final String PLUGIN_USER_AGENT = "Embargo Runelite Plugin";
 
-    private static final String MANIFEST_URL = "https://embargo.gg/api/runelite/manifest";
+    //private static final String MANIFEST_URL = "https://embargo.gg/api/runelite/manifest"; https://a278d141-927f-433b-8e4b-6d994067900d.mock.pstmn.io\
+    private static final String MANIFEST_URL = "https://a278d141-927f-433b-8e4b-6d994067900d.mock.pstmn.io/api/runelite/manifest";
     private static final String SUBMIT_URL = "https://embargo.gg/api/runelite/uploadcollectionlog";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
 
-    private Manifest manifest;
+
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
 
@@ -93,6 +96,12 @@ public class CollectionLogManager {
     @Inject
     private EmbargoConfig config;
 
+    @Inject
+    private Manifest manifest;
+
+    @Inject
+    private ManifestManager manifestManager;
+
     private final Client client;
     private final ClientThread clientThread;
     private final EventBus eventBus;
@@ -110,7 +119,7 @@ public class CollectionLogManager {
 
     public void startUp(SyncButtonManager mainSyncButtonManager) {
         eventBus.register(this);
-
+        manifestManager.getLatestManifest();
         syncButtonManager = mainSyncButtonManager;
 
         clientThread.invoke(() -> {
@@ -126,7 +135,7 @@ public class CollectionLogManager {
             return true;
         });
 
-        checkManifest();
+
     }
 
     public void shutDown() {
@@ -144,7 +153,7 @@ public class CollectionLogManager {
         if (tickCollectionLogScriptFired != -1 &&
                 tickCollectionLogScriptFired + 2 < client.getTickCount()) {
             tickCollectionLogScriptFired = -1;
-            if (manifest == null) {
+            if (manifestManager.getManifest() == null) {
                 client.addChatMessage(ChatMessageType.CONSOLE, "Embargo", "Failed to sync collection log. Try restarting the Embargo plugin.", "Embargo");
                 return;
             }
@@ -222,7 +231,7 @@ public class CollectionLogManager {
             return;
         }
 
-        if (manifest == null || client.getLocalPlayer() == null) {
+        if (manifestManager.getManifest() == null || client.getLocalPlayer() == null) {
 			log.debug("Skipped due to bad manifest: {}", manifest);
             return;
         }
@@ -300,53 +309,25 @@ public class CollectionLogManager {
         });
     }
 
-    private void checkManifest() {
-        Request request = new Request.Builder()
-                .addHeader("User-Agent", PLUGIN_USER_AGENT)
-                .url(MANIFEST_URL)
-                .build();
-        okHttpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-				log.debug("Failed to get manifest: ", e);
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) {
-                try {
-                    if (!response.isSuccessful()) {
-						log.debug("Failed to get manifest: {}", response.code());
-                        return;
-                    }
-                    InputStream in = response.body().byteStream();
-                    manifest = gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), Manifest.class);
-                    populateCollectionLogItemIdToBitsetIndex();
-                } catch (JsonParseException e) {
-                    log.debug("Failed to parse manifest,");
-                } finally {
-                    response.close();
-                }
-            }
-        });
-    }
-
     private void populateCollectionLogItemIdToBitsetIndex() {
-        if (manifest == null) {
+        if (manifestManager.getManifest() == null) {
+            manifestManager.getLatestManifest();
 			log.debug("Manifest is not present so the collection log bitset index will not be updated");
             return;
         }
+
         clientThread.invoke(() -> {
             // Add missing keys in order to the map. Order is extremely important here, so
             // we get a stable map given the same cache data.
             List<Integer> itemIdsMissingFromManifest = collectionLogItemIdsFromCache
                     .stream()
-                    .filter((t) -> !manifest.collections.contains(t))
+                    .filter((t) -> !manifestManager.getManifest().collections.contains(t))
                     .sorted()
                     .collect(Collectors.toList());
 
             int currentIndex = 0;
             collectionLogItemIdToBitsetIndex.clear();
-            for (Integer itemId : manifest.collections)
+            for (Integer itemId : manifestManager.getManifest().collections)
                 collectionLogItemIdToBitsetIndex.put(itemId, currentIndex++);
             for (Integer missingItemId : itemIdsMissingFromManifest) {
                 collectionLogItemIdToBitsetIndex.put(missingItemId, currentIndex++);

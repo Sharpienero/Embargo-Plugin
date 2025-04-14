@@ -89,6 +89,7 @@ public class UntrackableItemManager {
         }
         if (itemContainer != null && children != null) {
 
+            //Convert itemMap to use manifest.untrackableItems (which is a list of integers) instead of hardcoded enum
             var itemMap = Arrays.stream(UntrackableItems.values()).map(UntrackableItems::getItemId).collect(Collectors.toCollection(HashSet::new));
             List<Integer> playerItems = new ArrayList<>();
             java.util.Map<Integer, Integer> itemQuantities = new java.util.HashMap<>();

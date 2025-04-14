@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2025, andmcadams
+ * Modified by Sharpienero for Embargo
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,17 +24,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package gg.embargo.collections;
+package gg.embargo.manifest;
 
 import lombok.Data;
 
+import javax.inject.Singleton;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
 
 @Data
 public class Manifest
 {
+    // misc
     final float version = -1;
+
+    //Varp/varb trackable items
     final int[] varbits = new int[0];
     final int[] varps = new int[0];
+
+    //Untrackable items
+    public final List<Integer> untrackableItems = new ArrayList<>();
+
+    //Raid/Minigame completion messages
+    public final Map<String, String> raidCompletionMessages = new HashMap<>();
+    public final Map<String, String> minigameCompletionMessages = new HashMap<>();
+
+    //Collection log
     public final ArrayList<Integer> collections = new ArrayList<>();
+
+    //Easter egg
+    public final Map<String, String> itemRenames = new HashMap<>();
+    public final Map<String, String> npcRenames = new HashMap<>();
+
 }

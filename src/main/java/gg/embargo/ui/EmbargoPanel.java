@@ -264,7 +264,7 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     public void logOut() {
-        log.debug("inside of logOut()");
+       //log.debug("inside of logOut()");
         this.isLoggedIn = false;
 
         // Update labels
