@@ -48,14 +48,14 @@ public class Manifest
     public final List<Integer> untrackableItems = new ArrayList<>();
 
     //Raid/Minigame completion messages
-    public final Map<String, String> raidCompletionMessages = new HashMap<>();
-    public final Map<String, String> minigameCompletionMessages = new HashMap<>();
+    public Map<String, String> raidCompletionMessages = new HashMap<>();
+    public Map<String, String> minigameCompletionMessages = new HashMap<>();
 
     //Collection log
     public final ArrayList<Integer> collections = new ArrayList<>();
 
     //Easter egg
-    public final Map<String, String> itemRenames = new HashMap<>();
-    public final Map<String, String> npcRenames = new HashMap<>();
+    public Map<String, String> itemRenames = new HashMap<>();
+    public Map<String, String> npcRenames = new HashMap<>();
 
 }

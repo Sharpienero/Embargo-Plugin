@@ -2,6 +2,7 @@ package gg.embargo;
 
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
+import gg.embargo.eastereggs.NPCRenameManager;
 import gg.embargo.manifest.Manifest;
 import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
@@ -82,6 +83,9 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private ItemRenameManager itemRenameManager;
+	@Inject
+	private NPCRenameManager npcRenameManager;
+
 
 	@Inject
 	public ManifestManager manifestManager;
@@ -150,7 +154,10 @@ public class EmbargoPlugin extends Plugin {
 			noticeBoardManager.setNoticeBoards();
 		}
 
-		itemRenameManager.startUp();
+		if (config != null && config.enableClanEasterEggs()) {
+			itemRenameManager.startUp();
+			npcRenameManager.startUp();
+		}
 	}
 
 	@Override
@@ -173,6 +180,7 @@ public class EmbargoPlugin extends Plugin {
 		untrackableItemManager.shutDown();
 		syncButtonManager.shutDown();
 		itemRenameManager.shutDown();
+		npcRenameManager.shutDown();
 	}
 
 	@Subscribe
@@ -453,8 +461,10 @@ public class EmbargoPlugin extends Plugin {
 		if (event.getKey().equals("enableClanEasterEggs")) {
 			if (config.enableClanEasterEggs()) {
 				itemRenameManager.startUp();
+				npcRenameManager.startUp();
 			} else {
 				itemRenameManager.shutDown();
+				npcRenameManager.shutDown();
 			}
 		}
 	}

@@ -24,6 +24,15 @@ public class ItemRenameManager {
     private final EventBus eventBus;
     private final EmbargoConfig config;
     private final ManifestManager manifestManager;
+
+    @Inject
+    public ItemRenameManager(EventBus eventBus, EmbargoConfig config, ManifestManager manifestManager) {
+        this.eventBus = eventBus;
+        this.config = config;
+        this.manifestManager = manifestManager;
+    }
+
+
     private boolean manifestFetchAttempted = false;
 
     private static final Set<MenuAction> ITEM_MENU_ACTIONS = ImmutableSet.of(
@@ -41,13 +50,6 @@ public class ItemRenameManager {
 
     // Map for custom renamings
     private final Map<String, String> customItemRemap = new HashMap<>();
-
-    @Inject
-    public ItemRenameManager(EventBus eventBus, EmbargoConfig config, ManifestManager manifestManager) {
-        this.eventBus = eventBus;
-        this.config = config;
-        this.manifestManager = manifestManager;
-    }
 
     @Subscribe
     public void onMenuEntryAdded(MenuEntryAdded event) {

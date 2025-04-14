@@ -58,8 +58,6 @@ public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
     private static final String PLUGIN_USER_AGENT = "Embargo Runelite Plugin";
 
-    //private static final String MANIFEST_URL = "https://embargo.gg/api/runelite/manifest"; https://a278d141-927f-433b-8e4b-6d994067900d.mock.pstmn.io\
-    private static final String MANIFEST_URL = "https://a278d141-927f-433b-8e4b-6d994067900d.mock.pstmn.io/api/runelite/manifest";
     private static final String SUBMIT_URL = "https://embargo.gg/api/runelite/uploadcollectionlog";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
@@ -126,6 +124,7 @@ public class CollectionLogManager {
             if (client.getIndexConfig() == null || client.getGameState().ordinal() < GameState.LOGIN_SCREEN.ordinal()) {
                 return false;
             }
+            manifestManager.getLatestManifest();
             collectionLogItemIdsFromCache.addAll(parseCacheForClog());
             populateCollectionLogItemIdToBitsetIndex();
             final int[] varbitIds = client.getIndexConfig().getFileIds(VARBITS_ARCHIVE_ID);
@@ -311,8 +310,10 @@ public class CollectionLogManager {
 
     private void populateCollectionLogItemIdToBitsetIndex() {
         if (manifestManager.getManifest() == null) {
+            log.debug("Manifest is not present so the collection log bitset index will not be updated, will try again");
             manifestManager.getLatestManifest();
-			log.debug("Manifest is not present so the collection log bitset index will not be updated");
+            clientThread.invokeLater(this::populateCollectionLogItemIdToBitsetIndex);
+
             return;
         }
 

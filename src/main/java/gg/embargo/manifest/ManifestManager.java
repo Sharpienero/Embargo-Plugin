@@ -10,10 +10,8 @@ import okhttp3.*;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
-
-import static java.lang.System.in;
 
 @Slf4j
 @Singleton
@@ -42,6 +40,9 @@ public class ManifestManager {
         try {
             Request r = new Request.Builder()
                     .url(MANIFEST_ENDPOINT)
+                    .header("Cache-Control", "no-cache, no-store")
+                    .header("Pragma", "no-cache")
+                    .cacheControl(new CacheControl.Builder().noCache().noStore().build())
                     .build();
             okHttpClient.newCall(r).enqueue(new Callback() {
                 @Override
@@ -53,19 +54,23 @@ public class ManifestManager {
                 public void onResponse(@NonNull Call call, @NonNull Response response) {
                     if (response.isSuccessful()) {
                         try {
-                            // We want to be able to change the varbs and varps we get on the fly. To do so, we tell
-                            // the client what to send the server on startup via the manifest.
                             if (response.body() == null) {
                                 log.error("Manifest request succeeded but returned empty body");
                                 response.close();
+                                return;
                             }
 
-                            setManifest(gson.fromJson(new InputStreamReader(response.body().byteStream(), StandardCharsets.UTF_8), Manifest.class));
+                            setManifest(gson.fromJson(new StringReader(new String(response.body().bytes(), StandardCharsets.UTF_8), Manifest.class));
+                            log.debug("Set manifest");
+
                             if (lastCheckedManifestVersion != manifest.getVersion()) {
+                                log.debug("Setting manifest version to {}", manifest.getVersion());
                                 lastCheckedManifestVersion = manifest.getVersion();
                             }
                         } catch (JsonSyntaxException e) {
                             log.error(e.getLocalizedMessage());
+                        } catch (IOException e) {
+                            log.error("Error reading response body", e);
                         }
                     } else {
                         log.error("Manifest request returned with status " + response.code());
