@@ -60,7 +60,7 @@ public class ManifestManager {
                                 return;
                             }
 
-                            setManifest(gson.fromJson(new StringReader(new String(response.body().bytes(), StandardCharsets.UTF_8), Manifest.class));
+                            setManifest(gson.fromJson(new StringReader(new String(response.body().bytes(), StandardCharsets.UTF_8)), Manifest.class));
                             log.debug("Set manifest");
 
                             if (lastCheckedManifestVersion != manifest.getVersion()) {

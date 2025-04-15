@@ -1,18 +1,29 @@
 package gg.embargo.eastereggs.sounds;
+
 import gg.embargo.EmbargoConfig;
+import gg.embargo.eastereggs.SoundFileManager;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.sound.sampled.*;
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Singleton
 @Slf4j
 public class SoundEngine
 {
+
+    @Inject
+    private EmbargoConfig config;
+
     private static final long CLIP_MTIME_UNLOADED = -2;
 
     private long lastClipMTime = CLIP_MTIME_UNLOADED;
@@ -20,10 +31,10 @@ public class SoundEngine
 
     private boolean loadClip(Sound sound)
     {
-        try (InputStream stream = new BufferedInputStream(getSoundStream(sound));
+        try (InputStream stream = new BufferedInputStream(Objects.requireNonNull(SoundFileManager.getSoundStream(sound)));
              AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(stream))
         {
-            clip.open(audioInputStream);
+            clip.open(audioInputStream); // liable to error with pulseaudio, works on windows, one user informs me mac works
             return true;
         }
         catch (UnsupportedAudioFileException | IOException | LineUnavailableException e)
@@ -38,8 +49,17 @@ public class SoundEngine
         executor.execute(() -> playClip(sound));
     }
 
+    public void playClip(Sound sound, ScheduledExecutorService executor, Duration initialDelay)
+    {
+        executor.schedule(() -> playClip(sound), initialDelay.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
     private void playClip(Sound sound)
     {
+        if (SoundFileManager.getIsUpdating())
+        {
+            return;
+        }
         long currentMTime = System.currentTimeMillis();
         if (clip == null || currentMTime != lastClipMTime || !clip.isOpen())
         {
@@ -68,7 +88,7 @@ public class SoundEngine
 
         // User configurable volume
         FloatControl volume = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-        float gain = 20f * (float) Math.log10(20 / 100f);//Math.log10(config.announcementVolume() / 100f);
+        float gain = 20f * (float) Math.log10(config.announcementVolume() / 100f);
         gain = Math.min(gain, volume.getMaximum());
         gain = Math.max(gain, volume.getMinimum());
         volume.setValue(gain);
@@ -86,52 +106,5 @@ public class SoundEngine
         {
             clip.close();
         }
-    }
-
-    public static InputStream getSoundStream(Sound sound) throws FileNotFoundException {
-        if (sound == null) {
-            throw new FileNotFoundException("Sound cannot be null");
-        }
-        
-        // Define the base directory for sounds
-        File soundDir = new File(RuneLite.RUNELITE_DIR.getPath() + File.separator);
-        
-        // Get the specific directory for this sound category
-        File soundCategoryDir = new File(soundDir, sound.getDirectory());
-        
-        // Check for custom sounds first
-        File customSoundDir = new File(soundCategoryDir, "custom");
-        
-        // Try to find sound files
-        File[] soundFiles = null;
-        
-        // First check custom directory
-        if (customSoundDir.exists() && customSoundDir.isDirectory()) {
-            soundFiles = customSoundDir.listFiles(file -> 
-                !file.isDirectory() && isSupportedAudioFile(file.getName()));
-        }
-        
-        // If no custom sounds, check the main category directory
-        if ((soundFiles == null || soundFiles.length == 0) && soundCategoryDir.exists() && soundCategoryDir.isDirectory()) {
-            soundFiles = soundCategoryDir.listFiles(file -> 
-                !file.isDirectory() && isSupportedAudioFile(file.getName()));
-        }
-        
-        // If we found sound files, pick a random one
-        if (soundFiles != null && soundFiles.length > 0) {
-            // Select a random sound file
-            File selectedFile = soundFiles[new java.util.Random().nextInt(soundFiles.length)];
-            return new FileInputStream(selectedFile);
-        }
-        
-        // If we get here, no sound files were found
-        throw new FileNotFoundException("No sound files found for: " + sound.getDirectory());
-    }
-    
-    private static boolean isSupportedAudioFile(String fileName) {
-        String lowerCaseName = fileName.toLowerCase();
-        return lowerCaseName.endsWith(".wav") || 
-               lowerCaseName.endsWith(".mp3") || 
-               lowerCaseName.endsWith(".ogg");
     }
 }

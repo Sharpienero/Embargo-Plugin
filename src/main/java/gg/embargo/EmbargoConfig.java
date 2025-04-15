@@ -1,9 +1,6 @@
 package gg.embargo;
 
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.*;
 
 import java.awt.Color;
 
@@ -68,12 +65,63 @@ public interface EmbargoConfig extends Config
     @ConfigItem(
         keyName = "enableClanEasterEggs",
         name = "Enable Easter Eggs",
-        description = "Enables fun item name replacements like 'Dragon warhammer' to 'Bonker'",
+        description = "A top level control to enable/disable the feature",
         position = 3,
         section = easterEggSettings
     )
     default boolean enableClanEasterEggs() {
         return true;
     }
+
+
+    @ConfigItem(
+            keyName = "enableItemRenames",
+            name = "Enable Item Renames",
+            description = "Enables item name replacements like 'Dragon warhammer' to 'Bonker'",
+            position = 4,
+            section = easterEggSettings
+    )
+    default boolean enableItemRenames() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "enableNpcRenames",
+            name = "Enable NPC Renames",
+            description = "Enables NPC name changes, like 'Pestilent Bloat' to 'Dr D1sconnect'",
+            position = 5,
+            section = easterEggSettings
+    )
+    default boolean enableNpcRenames() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "enableCustomSounds",
+            name = "Enable Custom Sounds",
+            description = "Enables custom sounds; e.g white light @ tob/purple @ tob",
+            position = 6,
+            section = easterEggSettings
+    )
+    default boolean enableCustomSounds() {
+        return true;
+    }
+
+    @Range(
+            min=0,
+            max=200
+    )
+    @ConfigItem(
+            keyName = "easterEggVolume",
+            name = "Sound volume",
+            description = "Controls the volume",
+            position = 7,
+            section = easterEggSettings
+    )
+    default int announcementVolume()
+    {
+        return 60;
+    }
+
 }
 

@@ -1,4 +1,4 @@
-// Most code taken from https://github.com/DapperMickie/odablock-sounds
+// Most code taken from https://github.com/DapperMickie/Embargo-sounds
 
 package gg.embargo.eastereggs.sounds;
 
@@ -90,15 +90,14 @@ public class TobChestLight
                 if (isPurple) {
                     // TODO: Maybe change sound if it's yours
                     if (isMine) {
-                        soundEngine.playClip(Sound.TOB_PURPLE_CHEST, executor);
+                        soundEngine.playClip(Sound.MY_TOB_PURPLE, executor);
 //                      } else {
 //                          soundEngine.playClip(Sound.GETTING_PURPLE_1, executor);
 //                      }
                     }
-//                else
-//                {
-//                    soundEngine.playClip(Sound.WHITE_LIGHT_AFTER_RAID, executor);
-//                }
+                else {
+                    soundEngine.playClip(Sound.TOB_WHITE_LIGHT, executor);
+                    }
                 }
             }
         }

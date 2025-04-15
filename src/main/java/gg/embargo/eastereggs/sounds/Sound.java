@@ -5,7 +5,8 @@ import lombok.Getter;
 
 @Getter
 public enum Sound {
-    TOB_PURPLE_CHEST("/", "tbowscythe.wav");
+    MY_TOB_PURPLE("tob", "my_tob_purple.wav"),
+    TOB_WHITE_LIGHT("tob", "my_tob_white.wav");
 
     private final String directoryName;
     private final String resourceName;
