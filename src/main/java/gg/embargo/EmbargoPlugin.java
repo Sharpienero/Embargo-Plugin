@@ -4,10 +4,6 @@ import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.eastereggs.NPCRenameManager;
 import gg.embargo.eastereggs.SoundManager;
-import gg.embargo.eastereggs.sounds.Sound;
-import gg.embargo.eastereggs.sounds.SoundEngine;
-import gg.embargo.eastereggs.sounds.TobChestLight;
-import gg.embargo.manifest.Manifest;
 import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
 import gg.embargo.eastereggs.ItemRenameManager;
@@ -35,7 +31,6 @@ import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;

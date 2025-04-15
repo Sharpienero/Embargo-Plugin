@@ -1,4 +1,4 @@
-// Most code taken from https://github.com/DapperMickie/Embargo-sounds
+// Most code taken from https://github.com/DapperMickie/odablock-sounds
 
 package gg.embargo.eastereggs.sounds;
 
