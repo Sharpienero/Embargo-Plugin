@@ -3,6 +3,7 @@ package gg.embargo;
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.eastereggs.NPCRenameManager;
+import gg.embargo.eastereggs.SoundManager;
 import gg.embargo.eastereggs.sounds.Sound;
 import gg.embargo.eastereggs.sounds.SoundEngine;
 import gg.embargo.eastereggs.sounds.TobChestLight;
@@ -92,7 +93,7 @@ public class EmbargoPlugin extends Plugin {
 	private NPCRenameManager npcRenameManager;
 
 	@Inject
-	private TobChestLight tobChestLight;
+	private SoundManager soundManager;
 
 	@Inject
 	public ManifestManager manifestManager;
@@ -163,6 +164,7 @@ public class EmbargoPlugin extends Plugin {
 		if (config != null && config.enableClanEasterEggs()) {
 			itemRenameManager.startUp();
 			npcRenameManager.startUp();
+			soundManager.startUp();
 		}
 	}
 
@@ -187,6 +189,7 @@ public class EmbargoPlugin extends Plugin {
 		syncButtonManager.shutDown();
 		itemRenameManager.shutDown();
 		npcRenameManager.shutDown();
+		soundManager.shutDown();
 	}
 
 	@Subscribe
@@ -475,26 +478,5 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	@Subscribe
-	public void onVarbitChanged(VarbitChanged event)
-	{
-		tobChestLight.onVarbitChanged(event);
-	}
 
-	@Subscribe
-	public void onGameTick(GameTick event) {
-		tobChestLight.onGameTick(event);
-	}
-
-	@Subscribe
-	private void onGameObjectSpawned(GameObjectSpawned event)
-	{
-		tobChestLight.onGameObjectSpawned(event);
-	}
-
-	@Subscribe
-	private void onGameObjectDespawned(GameObjectDespawned event)
-	{
-		tobChestLight.onGameObjectDespawned(event);
-	}
 }

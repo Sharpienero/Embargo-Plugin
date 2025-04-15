@@ -1,5 +1,9 @@
 package gg.embargo.eastereggs.sounds;
 
+import lombok.Getter;
+
+
+@Getter
 public enum Sound {
     TOB_PURPLE_CHEST("/", "tbowscythe.wav");
 
@@ -11,14 +15,5 @@ public enum Sound {
     {
         this.directoryName = directoryName;
         this.resourceName = resourceName;
-    }
-
-    public String getResourceName()
-    {
-        return resourceName;
-    }
-
-    public String getDirectory() {
-        return directoryName;
     }
 }
