@@ -32,7 +32,6 @@ public class ItemRenameManager {
         this.manifestManager = manifestManager;
     }
 
-
     private boolean manifestFetchAttempted = false;
 
     private static final Set<MenuAction> ITEM_MENU_ACTIONS = ImmutableSet.of(
@@ -51,10 +50,14 @@ public class ItemRenameManager {
     // Map for custom renamings
     private final Map<String, String> customItemRemap = new HashMap<>();
 
+    public boolean featureEnabled() {
+        return config.enableClanEasterEggs() && config.enableItemRenames();
+    }
+
     @Subscribe
     public void onMenuEntryAdded(MenuEntryAdded event) {
         // Only process if easter eggs are enabled
-        if (!config.enableClanEasterEggs()) {
+        if (!featureEnabled()) {
             return;
         }
 
@@ -78,6 +81,9 @@ public class ItemRenameManager {
 
     public void startUp() {
         eventBus.register(this);
+
+        if (!featureEnabled()) return;
+
         setupMenuRenames();
         manifestManager.getLatestManifest(); // Fetch manifest on startup
     }

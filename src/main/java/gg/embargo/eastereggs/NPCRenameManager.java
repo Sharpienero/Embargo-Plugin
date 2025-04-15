@@ -47,11 +47,14 @@ public class NPCRenameManager {
 
     private boolean manifestFetchAttempted = false;
 
+    public boolean featureEnabled() {
+        return config.enableClanEasterEggs() && config.enableNpcRenames();
+    }
 
     @Subscribe
     protected void onMenuEntryAdded(MenuEntryAdded event) {
 
-        if (!config.enableClanEasterEggs()) {
+        if (!featureEnabled()) {
             return;
         }
 
@@ -76,6 +79,9 @@ public class NPCRenameManager {
 
     public void startUp() {
         eventBus.register(this);
+
+        if (!featureEnabled()) return;
+
         setupMenuRenames();
         manifestManager.getLatestManifest(); // Fetch manifest on startup
     }

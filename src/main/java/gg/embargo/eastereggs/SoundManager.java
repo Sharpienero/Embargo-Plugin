@@ -48,7 +48,7 @@ public class SoundManager {
     public boolean featureEnabled() {
         return config.enableClanEasterEggs() && config.enableCustomSounds();
     }
-    
+
     @Inject
     private TobChestLight tobChestLight;
 
