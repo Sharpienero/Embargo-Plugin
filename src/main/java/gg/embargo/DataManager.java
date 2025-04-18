@@ -137,7 +137,7 @@ public class DataManager {
     private static final String MINIGAME_COMPLETION_ENDPOINT = API_URI + APIRoutes.MINIGAME_COMPLETE;
     private static final String CLOG_UNLOCK_ENDPOINT = API_URI + APIRoutes.UPLOAD_CLOG;
 
-    public static ArrayList<String> BossesToTrack = null;
+    public static ArrayList BossesToTrack = null;
 
     public void storeVarbitChanged(int varbIndex, int varbValue) {
         synchronized (this) {
@@ -151,6 +151,11 @@ public class DataManager {
     }
 
     public List<Player> getSurroundingPlayers() {
+        List<Player> pl = new ArrayList<>();
+        if (client == null || client.getTopLevelWorldView() == null || client.getTopLevelWorldView().players() == null) {
+            return pl;
+        }
+
         return (List<Player>) client.getTopLevelWorldView().players();
     }
 
@@ -192,6 +197,8 @@ public class DataManager {
                     // convert json to an ArrayList<String>
                     BossesToTrack = gson.fromJson(json, ArrayList.class);
                 }
+
+                response.close();
             }
         });
         return null;
@@ -239,6 +246,8 @@ public class DataManager {
                 if (response.isSuccessful()) {
                     log.debug("Successfully uploaded raid preparation");
                 }
+
+                response.close();
             }
         });
     }
@@ -260,6 +269,8 @@ public class DataManager {
                 if (response.isSuccessful()) {
                     log.debug("Successfully uploaded minigame preparation");
                 }
+
+                response.close();
             }
         });
     }
@@ -571,7 +582,9 @@ public class DataManager {
                 //log.error("[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
                 this.restoreData(postRequestBody);
             }
+
         } catch (IOException ioException) {
+
             //log.error("[submitToAPI IOException: 496] Failed to submit data, attempting to reload dropped data");
             this.restoreData(postRequestBody);
         }
@@ -650,6 +663,8 @@ public class DataManager {
                             }
                         } catch (IOException | JsonSyntaxException e) {
                             log.error(e.getLocalizedMessage());
+                        } finally {
+                            response.close();
                         }
                     } else {
                         log.error("Manifest request returned with status " + response.code());
@@ -709,6 +724,8 @@ public class DataManager {
                             }
                         } catch (IOException | JsonSyntaxException e) {
                             log.error(e.getLocalizedMessage());
+                        } finally {
+                            response.close();
                         }
                     } else {
                         log.error("Manifest request returned with status " + response.code());

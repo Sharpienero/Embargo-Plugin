@@ -71,6 +71,8 @@ public class ManifestManager {
                             log.error(e.getLocalizedMessage());
                         } catch (IOException e) {
                             log.error("Error reading response body", e);
+                        } finally {
+                            response.close();
                         }
                     } else {
                         log.error("Manifest request returned with status " + response.code());

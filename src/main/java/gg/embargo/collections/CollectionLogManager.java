@@ -303,6 +303,8 @@ public class CollectionLogManager {
                     }
                     merge(old, delta);
                     cyclesSinceSuccessfulCall = 0;
+                } finally {
+                    response.close();
                 }
             }
         });
