@@ -27,7 +27,10 @@ package gg.embargo;
 
 import com.google.common.collect.HashMultimap;
 import com.google.gson.*;
+import gg.embargo.collections.CollectionLogManager;
+import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
+import gg.embargo.manifest.Manifest;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -79,6 +82,12 @@ public class DataManager {
     @Getter
     @Setter
     private HashSet<Integer> varbitsToCheck;
+
+    @Inject
+    private Manifest manifest;
+
+    @Inject
+    private ManifestManager manifestManager;
 
     @Getter
     @Setter
@@ -142,7 +151,12 @@ public class DataManager {
     }
 
     public List<Player> getSurroundingPlayers() {
-        return client.getPlayers();
+        List<Player> pl = new ArrayList<>();
+        if (client == null || client.getTopLevelWorldView() == null || client.getTopLevelWorldView().players() == null) {
+            return pl;
+        }
+
+        return (List<Player>) client.getTopLevelWorldView().players();
     }
 
     public boolean shouldTrackLoot(String bossName) {
@@ -183,6 +197,8 @@ public class DataManager {
                     // convert json to an ArrayList<String>
                     BossesToTrack = gson.fromJson(json, ArrayList.class);
                 }
+
+                response.close();
             }
         });
         return null;
@@ -191,7 +207,7 @@ public class DataManager {
     public void uploadCollectionLogUnlock(String item, String player)
     {
         JsonObject payload = getClogUploadPayload(item, player);
-        log.debug(String.valueOf(payload));
+        //log.debug(String.valueOf(payload));
 
         okHttpClient.newCall(new Request.Builder().url(CLOG_UNLOCK_ENDPOINT).post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
             @Override
@@ -230,6 +246,8 @@ public class DataManager {
                 if (response.isSuccessful()) {
                     log.debug("Successfully uploaded raid preparation");
                 }
+
+                response.close();
             }
         });
     }
@@ -251,6 +269,8 @@ public class DataManager {
                 if (response.isSuccessful()) {
                     log.debug("Successfully uploaded minigame preparation");
                 }
+
+                response.close();
             }
         });
     }
@@ -502,9 +522,9 @@ public class DataManager {
 
             parent.addProperty("username", client.getLocalPlayer().getName());
             parent.addProperty("profile", r.name());
+            parent.addProperty("version", manifestManager.getLastCheckedManifestVersion());
             parent.add("data", j);
         }
-        log.debug(parent.toString());
         return parent;
     }
 
@@ -531,7 +551,6 @@ public class DataManager {
     }
 
 
-
     protected void submitToAPI() {
         if (!hasDataToPush() || client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null)
             return;
@@ -547,7 +566,7 @@ public class DataManager {
             return;
         }
 
-        log.debug("Submitting changed data to endpoint...");
+        //log.debug("Submitting changed data to endpoint...");
         JsonObject postRequestBody = convertToJson();
         Request request = new Request.Builder()
                 .url(UNTRACKABLE_POST_ENDPOINT)
@@ -563,7 +582,9 @@ public class DataManager {
                 //log.error("[submitToAPI !response.isSuccessful(): 496] Failed to submit data, attempting to reload dropped data");
                 this.restoreData(postRequestBody);
             }
+
         } catch (IOException ioException) {
+
             //log.error("[submitToAPI IOException: 496] Failed to submit data, attempting to reload dropped data");
             this.restoreData(postRequestBody);
         }
@@ -579,6 +600,8 @@ public class DataManager {
 
     public void loadInitialData()
     {
+        manifestManager.getLatestManifest();
+
         for (int varbIndex : varbitsToCheck)
         {
             storeVarbitChanged(varbIndex, client.getVarbitValue(varbIndex));
@@ -594,8 +617,9 @@ public class DataManager {
         }
     }
 
+    //NEEDS TO BE MODIFIED TO USE NEW MANIFEST OBJECT STUFF
     protected void getManifest() {
-        log.debug("Getting manifest file...");
+        //log.debug("Getting manifest file...");
         try {
             Request r = new Request.Builder()
                     .url(MANIFEST_ENDPOINT)
@@ -639,6 +663,8 @@ public class DataManager {
                             }
                         } catch (IOException | JsonSyntaxException e) {
                             log.error(e.getLocalizedMessage());
+                        } finally {
+                            response.close();
                         }
                     } else {
                         log.error("Manifest request returned with status " + response.code());
@@ -656,13 +682,12 @@ public class DataManager {
         }
     }
 
+    //NEEDS TO BE MODIFIED TO USE NEW MANIFEST OBJECT STUFF
     protected int getVersion() {
-        log.debug("Attempting to get manifest version...");
+        //log.debug("Attempting to get manifest version...");
         Request request = new Request.Builder()
                 .url(MANIFEST_ENDPOINT)
                 .build();
-
-        var serverManifestVersion = -1;
 
         try {
             okHttpClient.newCall(request).enqueue(new Callback() {
@@ -687,8 +712,8 @@ public class DataManager {
                             try {
                                 try {
                                     int manifestVersion = j.get("version").getAsInt();
-                                    if (getLastManifestVersion() != manifestVersion) {
-                                        setLastManifestVersion(manifestVersion);
+                                    if (manifestManager.getLatestManifest().getVersion() != manifestVersion) {
+                                        //update to use new manifest stuff
                                         clientThread.invoke(() -> loadInitialData());
                                     }
                                 } catch (UnsupportedOperationException | NullPointerException exception) {
@@ -699,6 +724,8 @@ public class DataManager {
                             }
                         } catch (IOException | JsonSyntaxException e) {
                             log.error(e.getLocalizedMessage());
+                        } finally {
+                            response.close();
                         }
                     } else {
                         log.error("Manifest request returned with status " + response.code());
@@ -725,7 +752,7 @@ public class DataManager {
         if (oldVarps == null)
             setupVarpTracking();
 
-        int varpIndexChanged = varbitChanged.getIndex();
+        int varpIndexChanged = varbitChanged.getVarpId();
         if (varpsToCheck.contains(varpIndexChanged))
         {
             storeVarpChanged(varpIndexChanged, client.getVarpValue(varpIndexChanged));
@@ -789,15 +816,15 @@ public class DataManager {
     )
     public void resyncManifest()
     {
-        log.debug("Attempting to resync manifest");
-        if (getVersion() != getLastManifestVersion())
+        //log.debug("Attempting to resync manifest");
+        if (manifestManager.getManifest().getVersion() != getLastManifestVersion())
         {
             getManifest();
         }
     }
 
     @Schedule(
-            period = 30,
+            period = 10,
             unit = ChronoUnit.SECONDS,
             asynchronous = true
     )
@@ -808,12 +835,14 @@ public class DataManager {
             if (client.getLocalPlayer() != null) {
                 String username = client.getLocalPlayer().getName();
                 if (checkRegistered(username)) {
-                    log.debug("updateProfileAfterLoggedIn Member registered");
+                    //log.debug("updateProfileAfterLoggedIn Member registered");
                     embargoPanel.updateLoggedIn(true);
                 }
             }
         } else {
-            log.debug("User is hopping or logged out, do not send data");
+            //log.debug("User is hopping or logged out, do not send data");
+            embargoPanel.isLoggedIn = false;
+            embargoPanel.updateLoggedIn(false);
             embargoPanel.logOut();
         }
     }

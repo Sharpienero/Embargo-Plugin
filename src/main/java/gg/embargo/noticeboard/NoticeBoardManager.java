@@ -1,9 +1,10 @@
 /*
 Almost all of this code was taken from the tob-notice-board plugin by Broooklyn
 https://github.com/Broooklyn/runelite-external-plugins/tree/tob-notice-board
-Slight modifications were made to work with clans by Sharpienero/Embargo
+Modifications were made to work with clans by Sharpienero/Embargo
 
 Added TOA code
+ 13/04/2025 - Converted to use gamevals
  */
 
 
@@ -11,12 +12,11 @@ package gg.embargo.noticeboard;
 
 import gg.embargo.EmbargoConfig;
 import lombok.extern.slf4j.Slf4j;
-import com.google.inject.Provides;
 import net.runelite.api.Client;
 import net.runelite.api.clan.ClanChannelMember;
 import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -48,16 +48,9 @@ public class NoticeBoardManager {
         this.eventBus = eventBus;
     }
 
-    @Provides
-    EmbargoConfig getConfig(ConfigManager configManager)
-    {
-        return configManager.getConfig(EmbargoConfig.class);
-    }
-
     private static final int DEFAULT_RGB = 0xff981f;
     private static final int STARTING_PARTY_CHILD_ID = 17;
     private static final int ENDING_PARTY_CHILD_ID = 62;
-    private final String CONFIG_GROUP = "embargo";
 
     private void setNoticeBoardWidget(int parent, int index, int clanColor) {
         for (int childID = STARTING_PARTY_CHILD_ID; childID < ENDING_PARTY_CHILD_ID; ++childID) {
@@ -80,18 +73,15 @@ public class NoticeBoardManager {
     }
 
     private void setApplicationWidget(int parent, int child, int clanColor) {
-        //tob applicant board
         Widget acceptWidgetMembers = client.getWidget(parent, child);
         if (acceptWidgetMembers != null && acceptWidgetMembers.getChildren() != null) {
             Widget[] acceptWidgetChildren = acceptWidgetMembers.getChildren();
-            //log.debug(String.valueOf(acceptWidgetMembers));
             for (Widget w : acceptWidgetChildren) {
                 if (client != null && client.getClanChannel() != null) {
                     for (ClanChannelMember member : client.getClanChannel().getMembers()) {
                         if (w.getText().contains(member.getName())) {
                             String hex = Integer.toHexString(clanColor).substring(2);
                             String builtName = "<col=" + hex + ">" + member.getName() + "</col>";
-                            //log.debug(builtName);
                             w.setName("<col=" + hex + ">" + member.getName() + "</col>");
                             w.setText(builtName);
                         }
@@ -151,13 +141,13 @@ public class NoticeBoardManager {
         clientThread.invokeLater(() ->
         {
             // TOB
-            if (widgetLoaded.getGroupId() == 364 || widgetLoaded.getGroupId() == 50)
+            if (widgetLoaded.getGroupId() == InterfaceID.TOB_PARTYLIST || widgetLoaded.getGroupId() == InterfaceID.TOB_PARTYDETAILS)
             {
                 setTOBNoticeBoard();
             }
 
             // TOA
-            if (widgetLoaded.getGroupId() == 772 || widgetLoaded.getGroupId() == 774) {
+            if (widgetLoaded.getGroupId() == InterfaceID.TOA_PARTYLIST|| widgetLoaded.getGroupId() == InterfaceID.TOA_PARTYDETAILS) {
                 setTOANoticeBoard();
             }
         });
@@ -165,6 +155,7 @@ public class NoticeBoardManager {
 
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
+        String CONFIG_GROUP = "embargo";
         if (!event.getGroup().equals(CONFIG_GROUP))
         {
             return;
