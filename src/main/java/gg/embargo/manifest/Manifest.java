@@ -28,7 +28,6 @@ package gg.embargo.manifest;
 
 import lombok.Data;
 
-import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
