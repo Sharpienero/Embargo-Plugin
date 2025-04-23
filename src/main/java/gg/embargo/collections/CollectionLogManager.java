@@ -28,6 +28,9 @@ package gg.embargo.collections;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import gg.embargo.EmbargoConfig;
+import gg.embargo.manifest.Manifest;
+import gg.embargo.manifest.ManifestManager;
+import gg.embargo.ui.EmbargoPanel;
 import gg.embargo.ui.SyncButtonManager;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -53,15 +56,12 @@ import java.util.stream.Collectors;
 public class CollectionLogManager {
 
     private final int VARBITS_ARCHIVE_ID = 14;
-    private final String CONFIG_GROUP = "embargo";
     private static final String PLUGIN_USER_AGENT = "Embargo Runelite Plugin";
 
-    private static final String MANIFEST_URL = "https://embargo.gg/api/runelite/manifest";
     private static final String SUBMIT_URL = "https://embargo.gg/api/runelite/uploadcollectionlog";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
 
-    private Manifest manifest;
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
 
@@ -85,10 +85,19 @@ public class CollectionLogManager {
     private ScheduledExecutorService scheduledExecutorService;
 
     @Inject
+    private EmbargoPanel embargoPanel;
+
+    @Inject
     private Gson gson;
 
     @Inject
     private EmbargoConfig config;
+
+    @Inject
+    private Manifest manifest;
+
+    @Inject
+    private ManifestManager manifestManager;
 
     private final Client client;
     private final ClientThread clientThread;
@@ -98,8 +107,7 @@ public class CollectionLogManager {
     private CollectionLogManager(
             Client client,
             ClientThread clientThread,
-            EventBus eventBus
-    ) {
+            EventBus eventBus) {
         this.client = client;
         this.clientThread = clientThread;
         this.eventBus = eventBus;
@@ -107,13 +115,14 @@ public class CollectionLogManager {
 
     public void startUp(SyncButtonManager mainSyncButtonManager) {
         eventBus.register(this);
-
+        manifestManager.getLatestManifest();
         syncButtonManager = mainSyncButtonManager;
 
         clientThread.invoke(() -> {
             if (client.getIndexConfig() == null || client.getGameState().ordinal() < GameState.LOGIN_SCREEN.ordinal()) {
                 return false;
             }
+            manifestManager.getLatestManifest();
             collectionLogItemIdsFromCache.addAll(parseCacheForClog());
             populateCollectionLogItemIdToBitsetIndex();
             final int[] varbitIds = client.getIndexConfig().getFileIds(VARBITS_ARCHIVE_ID);
@@ -123,7 +132,6 @@ public class CollectionLogManager {
             return true;
         });
 
-        checkManifest();
     }
 
     public void shutDown() {
@@ -141,8 +149,9 @@ public class CollectionLogManager {
         if (tickCollectionLogScriptFired != -1 &&
                 tickCollectionLogScriptFired + 2 < client.getTickCount()) {
             tickCollectionLogScriptFired = -1;
-            if (manifest == null) {
-                client.addChatMessage(ChatMessageType.CONSOLE, "Embargo", "Failed to sync collection log. Try restarting the Embargo plugin.", "Embargo");
+            if (manifestManager.getManifest() == null) {
+                client.addChatMessage(ChatMessageType.CONSOLE, "Embargo",
+                        "Failed to sync collection log. Try restarting the Embargo plugin.", "Embargo");
                 return;
             }
             scheduledExecutorService.execute(this::submitTask);
@@ -153,23 +162,25 @@ public class CollectionLogManager {
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         GameState state = gameStateChanged.getGameState();
         switch (state) {
-            // When hopping, we need to clear any state related to the player
+            // When hopping or logging out, we need to clear any state related to the player
             case HOPPING:
             case LOGGING_IN:
             case CONNECTION_LOST:
+            case LOGIN_SCREEN: // Add this case to handle explicit logout
                 clogItemsBitSet.clear();
                 clogItemsCountSet.clear();
                 clogItemsCount = null;
+                embargoPanel.logOut();
                 break;
         }
     }
-
 
     /**
      * Finds the index this itemId is assigned to in the collections mapping.
      *
      * @param itemId: The itemId to look up
-     * @return The index of the bit that represents the given itemId, if it is in the map. -1 otherwise.
+     * @return The index of the bit that represents the given itemId, if it is in
+     *         the map. -1 otherwise.
      */
     private int lookupCollectionLogItemIndex(int itemId) {
         // The map has not loaded yet, or failed to load.
@@ -178,13 +189,13 @@ public class CollectionLogManager {
         }
         Integer result = collectionLogItemIdToBitsetIndex.get(itemId);
         if (result == null) {
-			log.debug("Item id {} not found in the mapping of items", itemId);
+            log.debug("Item id {} not found in the mapping of items", itemId);
             return -1;
         }
         return result;
     }
 
-    //CollectionLog Subscribe
+    // CollectionLog Subscribe
     @Subscribe
     public void onScriptPreFired(ScriptPreFired preFired) {
         if (syncButtonManager.isSyncAllowed() && preFired.getScriptId() == 4100) {
@@ -217,8 +228,8 @@ public class CollectionLogManager {
             return;
         }
 
-        if (manifest == null || client.getLocalPlayer() == null) {
-			log.debug("Skipped due to bad manifest: {}", manifest);
+        if (manifestManager.getManifest() == null || client.getLocalPlayer() == null) {
+            log.debug("Skipped due to bad manifest: {}", manifest);
             return;
         }
 
@@ -234,14 +245,7 @@ public class CollectionLogManager {
             return;
         }
 
-
         submitPlayerData(profileKey, newPlayerData, oldPlayerData);
-    }
-
-    public void manifestTask() {
-        if (client.getGameState() == GameState.LOGGED_IN) {
-            checkManifest();
-        }
     }
 
     private PlayerData getPlayerData() {
@@ -254,18 +258,14 @@ public class CollectionLogManager {
         return out;
     }
 
-    private void subtract(PlayerData newPlayerData, PlayerData oldPlayerData) {
-        if (newPlayerData.collectionLogSlots.equals(oldPlayerData.collectionLogSlots))
-            newPlayerData.clearCollectionLog();
-    }
-
     private void merge(PlayerData oldPlayerData, PlayerData delta) {
         oldPlayerData.collectionLogSlots = delta.collectionLogSlots;
         oldPlayerData.collectionLogItemCount = delta.collectionLogItemCount;
     }
 
     private void submitPlayerData(PlayerProfile profileKey, PlayerData delta, PlayerData old) {
-        // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
+        // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to
+        // submit.
         // This gives us quadratic backoff.
         cyclesSinceSuccessfulCall += 1;
         if (Math.pow((int) Math.sqrt(cyclesSinceSuccessfulCall), 2) != cyclesSinceSuccessfulCall) {
@@ -275,8 +275,7 @@ public class CollectionLogManager {
         PlayerDataSubmission submission = new PlayerDataSubmission(
                 profileKey.getUsername(),
                 profileKey.getProfileType().name(),
-                delta
-        );
+                delta);
 
         Request request = new Request.Builder()
                 .addHeader("User-Agent", PLUGIN_USER_AGENT)
@@ -294,7 +293,7 @@ public class CollectionLogManager {
 
             @Override
             public void onResponse(Call call, Response response) {
-                try {
+                try (response) {
                     if (!response.isSuccessful()) {
                         log.debug("Failed to submit: {}", response.code());
                         return;
@@ -308,53 +307,46 @@ public class CollectionLogManager {
         });
     }
 
-    private void checkManifest() {
-        Request request = new Request.Builder()
-                .addHeader("User-Agent", PLUGIN_USER_AGENT)
-                .url(MANIFEST_URL)
-                .build();
-        okHttpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-				log.debug("Failed to get manifest: ", e);
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) {
-                try {
-                    if (!response.isSuccessful()) {
-						log.debug("Failed to get manifest: {}", response.code());
-                        return;
-                    }
-                    InputStream in = response.body().byteStream();
-                    manifest = gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), Manifest.class);
-                    populateCollectionLogItemIdToBitsetIndex();
-                } catch (JsonParseException e) {
-                    log.debug("Failed to parse manifest,");
-                } finally {
-                    response.close();
-                }
-            }
-        });
-    }
-
     private void populateCollectionLogItemIdToBitsetIndex() {
-        if (manifest == null) {
-			log.debug("Manifest is not present so the collection log bitset index will not be updated");
+        if (manifestManager.getManifest() == null) {
+            log.debug("populateCollectionLogItemIdToBitsetIndex manifest is NULL");
+
+            // Only log this message once every few seconds to avoid spam
+            if (System.currentTimeMillis() % 5000 < 100) { // Log roughly once every 5 seconds
+                log.debug(
+                        "Manifest is not present so the collection log bitset index will not be updated, will try again");
+            }
+
+            // Request the manifest if needed
+            manifestManager.getLatestManifest();
+
+            // Schedule a retry with a longer delay to reduce spam
+            clientThread.invokeLater(() -> {
+                try {
+                    Thread.sleep(1000); // Add a 1-second delay between retries
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                populateCollectionLogItemIdToBitsetIndex();
+            });
+
             return;
         }
+
+        log.debug("populateCollectionLogItemIdToBitsetIndex manifest is set as intended, continuing");
+
         clientThread.invoke(() -> {
             // Add missing keys in order to the map. Order is extremely important here, so
             // we get a stable map given the same cache data.
             List<Integer> itemIdsMissingFromManifest = collectionLogItemIdsFromCache
                     .stream()
-                    .filter((t) -> !manifest.collections.contains(t))
+                    .filter((t) -> !manifestManager.getManifest().collections.contains(t))
                     .sorted()
                     .collect(Collectors.toList());
 
             int currentIndex = 0;
             collectionLogItemIdToBitsetIndex.clear();
-            for (Integer itemId : manifest.collections)
+            for (Integer itemId : manifestManager.getManifest().collections)
                 collectionLogItemIdToBitsetIndex.put(itemId, currentIndex++);
             for (Integer missingItemId : itemIdsMissingFromManifest) {
                 collectionLogItemIdToBitsetIndex.put(missingItemId, currentIndex++);
@@ -370,11 +362,13 @@ public class CollectionLogManager {
      */
     private HashSet<Integer> parseCacheForClog() {
         HashSet<Integer> itemIds = new HashSet<>();
-        // 2102 - Struct that contains the highest level tabs in the collection log (Bosses, Raids, etc)
+        // 2102 - Struct that contains the highest level tabs in the collection log
+        // (Bosses, Raids, etc)
         // https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2102
         int[] topLevelTabStructIds = client.getEnum(2102).getIntVals();
         for (int topLevelTabStructIndex : topLevelTabStructIds) {
-            // The collection log top level tab structs contain a param that points to the enum
+            // The collection log top level tab structs contain a param that points to the
+            // enum
             // that contains the pointers to sub tabs.
             // ex: https://chisel.weirdgloop.org/structs/index.html?type=structs&id=471
             StructComposition topLevelTabStruct = client.getStructComposition(topLevelTabStructIndex);
@@ -384,18 +378,25 @@ public class CollectionLogManager {
             int[] subtabStructIndices = client.getEnum(topLevelTabStruct.getIntValue(683)).getIntVals();
             for (int subtabStructIndex : subtabStructIndices) {
 
-                // The subtab structs are for subtabs in the collection log (Commander Zilyana, Chambers of Xeric, etc.)
-                // and contain a pointer to the enum that contains all the item ids for that tab.
-                // ex subtab struct: https://chisel.weirdgloop.org/structs/index.html?type=structs&id=476
-                // ex subtab enum: https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2109
+                // The subtab structs are for subtabs in the collection log (Commander Zilyana,
+                // Chambers of Xeric, etc.)
+                // and contain a pointer to the enum that contains all the item ids for that
+                // tab.
+                // ex subtab struct:
+                // https://chisel.weirdgloop.org/structs/index.html?type=structs&id=476
+                // ex subtab enum:
+                // https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2109
                 StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
                 int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
-                for (int clogItemId : clogItems) itemIds.add(clogItemId);
+                for (int clogItemId : clogItems)
+                    itemIds.add(clogItemId);
             }
         }
 
-        // Some items with data saved on them have replacements to fix a duping issue (satchels, flamtaer bag)
-        // Enum 3721 contains a mapping of the item ids to replace -> ids to replace them with
+        // Some items with data saved on them have replacements to fix a duping issue
+        // (satchels, flamtaer bag)
+        // Enum 3721 contains a mapping of the item ids to replace -> ids to replace
+        // them with
         EnumComposition replacements = client.getEnum(3721);
         for (int badItemId : replacements.getKeys())
             itemIds.remove(badItemId);
@@ -405,24 +406,10 @@ public class CollectionLogManager {
         return itemIds;
     }
 
-
-    private int getVarbitValue(int varbitId) {
-        VarbitComposition v = varbitCompositions.get(varbitId);
-        if (v == null) {
-            return -1;
-        }
-
-        int value = client.getVarpValue(v.getIndex());
-        int lsb = v.getLeastSignificantBit();
-        int msb = v.getMostSignificantBit();
-        int mask = (1 << ((msb - lsb) + 1)) - 1;
-        return (value >> lsb) & mask;
-    }
-
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
-        if (!event.getGroup().equals(CONFIG_GROUP))
-        {
+        String CONFIG_GROUP = "embargo";
+        if (!event.getGroup().equals(CONFIG_GROUP)) {
             return;
         }
 

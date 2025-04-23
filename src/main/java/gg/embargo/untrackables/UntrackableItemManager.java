@@ -4,11 +4,10 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import okhttp3.*;
@@ -90,6 +89,7 @@ public class UntrackableItemManager {
         }
         if (itemContainer != null && children != null) {
 
+            //Convert itemMap to use manifest.untrackableItems (which is a list of integers) instead of hardcoded enum
             var itemMap = Arrays.stream(UntrackableItems.values()).map(UntrackableItems::getItemId).collect(Collectors.toCollection(HashSet::new));
             List<Integer> playerItems = new ArrayList<>();
             java.util.Map<Integer, Integer> itemQuantities = new java.util.HashMap<>();

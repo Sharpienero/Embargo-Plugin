@@ -41,14 +41,4 @@ public class PlayerData
     public String collectionLogSlots = "";
     public Map<Integer, Integer> collectionLogCounts = new HashMap<>();
 
-    public boolean isEmpty()
-    {
-        return collectionLogSlots.isEmpty() && collectionLogItemCount == null;
-    }
-
-    public void clearCollectionLog()
-    {
-        collectionLogSlots = "";
-        collectionLogItemCount = null;
-    }
 }
