@@ -321,14 +321,9 @@ public class CollectionLogManager {
             manifestManager.getLatestManifest();
 
             // Schedule a retry with a longer delay to reduce spam
-            clientThread.invokeLater(() -> {
-                try {
-                    Thread.sleep(1000); // Add a 1-second delay between retries
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                populateCollectionLogItemIdToBitsetIndex();
-            });
+            scheduledExecutorService.schedule(() -> {
+                clientThread.invoke(this::populateCollectionLogItemIdToBitsetIndex);
+            }, 1, TimeUnit.SECONDS);
 
             return;
         }
