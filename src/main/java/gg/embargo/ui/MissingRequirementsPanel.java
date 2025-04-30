@@ -260,6 +260,9 @@ public class MissingRequirementsPanel extends PluginPanel {
                 
                 if (index >= 0 && index < missingItems.size()) {
                     MissingItem item = missingItems.get(index);
+                    if (item.getItemId() == -1) {
+                        return;
+                    }
                     String wikiUrl = OSRS_WIKI_BASE_URL + item.getItemName().replace(" ", "_");
                     LinkBrowser.browse(wikiUrl);
                 }
