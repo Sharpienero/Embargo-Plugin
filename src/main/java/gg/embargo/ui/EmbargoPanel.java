@@ -8,8 +8,10 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.ItemComposition;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -24,6 +26,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 
 @Slf4j
 public class EmbargoPanel extends PluginPanel {
@@ -41,6 +44,9 @@ public class EmbargoPanel extends PluginPanel {
 
     @Inject
     private ClientThread clientThread;
+
+    @Inject
+    private ItemManager itemManager;
 
     @Setter
     public boolean isLoggedIn = false;
@@ -131,7 +137,7 @@ public class EmbargoPanel extends PluginPanel {
         actionsContainer.setBorder(new EmptyBorder(10, 0, 0, 0));
         actionsContainer.setLayout(new GridLayout(0, 1, 0, 10));
 
-        actionsContainer.add(buildLinkPanel(DISCORD_ICON, "Join us on our", "Discord", "https://embargo.gg/discord"));
+        actionsContainer.add(buildLinkPanel(DISCORD_ICON, "Join us on our", "Discord", "https://discord.gg/embargo"));
         actionsContainer.add(buildLinkPanel(WEBSITE_ICON, "Go to our", "clan website", "https://embargo.gg/"));
         actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Report a bug or", "inspect the plugin code", "https://github.com/Sharpienero/Embargo-Plugin"));
 
@@ -233,30 +239,31 @@ public class EmbargoPanel extends PluginPanel {
 
                     currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
-                    // Build out the missing requirements panel
+                    ArrayList<String> alreadyProcessed = new ArrayList<>();
+
+                    //Build out the missing requirements panel
                     if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
                         for (JsonElement mi : missingGearReqs) {
-                            clientThread.invokeLater(() -> {
-                                boolean skipProcessing = missingRequirementsPanelX
-                                        .skipProcessingByName(String.valueOf(mi), missingUntradableItemIdReqs);
-                                if (!skipProcessing) {
-                                    missingRequirementsPanelX.addMissingItem(String.valueOf(mi),
-                                            missingRequirementsPanelX.findItemIdByName(String.valueOf(mi)));
-                                } else {
-                                    for (JsonElement mu : missingUntradableItemIdReqs) {
-                                        String missingItemName = missingRequirementsPanelX.getItemNameFromId(mu.getAsInt());
-                                        missingRequirementsPanelX.addMissingItem(missingItemName, mu.getAsInt());
-                                    }
-                                }
-                            });
+                            alreadyProcessed.add(mi.getAsString());
+                            log.debug("Processing {} in missingGearReqs", mi.getAsString());
+                            clientThread.invokeLater(() ->
+                                    missingRequirementsPanelX.addMissingItem(String.valueOf(mi), missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
+                        }
+
+                        for (JsonElement mu : missingUntradableItemIdReqs) {
+                            if (alreadyProcessed.contains(mu.getAsString())) {
+                                log.debug("{} already added, skipping missingUntradableItemIdReqs", mu.getAsString());
+                                continue;
+                            }
+                            missingRequirementsPanelX.addMissingItem("", mu.getAsInt());
                         }
 
                         // Clear the panel first
                         missingRequirementsPanel.removeAll();
-                        
+
                         // Add only the missingRequirementsPanelX (not the label)
                         missingRequirementsPanel.add(missingRequirementsPanelX);
-                        
+
                         // Refresh the panel
                         missingRequirementsPanel.revalidate();
                         missingRequirementsPanel.repaint();
@@ -267,11 +274,8 @@ public class EmbargoPanel extends PluginPanel {
                     emailLabel.setText("Account not registered with Embargo");
                 }
                 this.isLoggedIn = true;
-            } else {
-                this.logOut();
             }
-        } else {
-            this.logOut();
+
         }
     }
 
