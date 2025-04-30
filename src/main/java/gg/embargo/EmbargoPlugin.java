@@ -30,6 +30,7 @@ import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
+import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -120,7 +121,7 @@ public class EmbargoPlugin extends Plugin {
 
 		if (client != null) {
 			if (client.getGameState() == GameState.LOGGED_IN) {
-				if (dataManager.checkRegistered(client.getLocalPlayer().getName())) {
+				if (dataManager.isUserRegistered(client.getLocalPlayer().getName())) {
 					embargoPanel.updateLoggedIn(false);
 				}
 			}
@@ -209,11 +210,9 @@ public class EmbargoPlugin extends Plugin {
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				String username = localPlayer.getName();
-				if (dataManager.checkRegistered(username)) {
+				if (dataManager.isUserRegistered(username)) {
 					embargoPanel.updateLoggedIn(true);
 					return true;
-
-					
 				}
 			}
 			return false;
@@ -225,7 +224,7 @@ public class EmbargoPlugin extends Plugin {
     
 		// Clear both panel references
 		if (embargoPanel != null) {
-			embargoPanel.logOut();
+			SwingUtilities.invokeLater(() -> embargoPanel.logOut());
 		} else {
 			log.debug("embargoPanel is null!!!");
 		}
@@ -280,7 +279,7 @@ public class EmbargoPlugin extends Plugin {
 		Player localPlayer = client.getLocalPlayer();
 		if (localPlayer != null) {
 			String username = localPlayer.getName();
-			if (dataManager.checkRegistered(username)) {
+			if (dataManager.isUserRegistered(username)) {
 				log.debug("updateProfileAfterLoggedIn Member registered");
 				embargoPanel.updateLoggedIn(true);
 			}
