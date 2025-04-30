@@ -124,14 +124,7 @@ public class MissingRequirementsPanel extends PluginPanel {
         if (finalCleanedName.toLowerCase().contains("infernal cape")) {
             itemId = 21295;
         }
-
-        //if (finalCleanedName.toLowerCase().contains("|")) {
-            // Handle items with multiple options (separated by |)
-            // if (!itemExists) {
-                //handleMultiIconItem(finalCleanedName, itemId);
-            // }
-            // return;
-        // }
+        
         // Only add if it doesn't exist
         if (!itemExists) {
             BufferedImage itemIcon;
@@ -147,43 +140,6 @@ public class MissingRequirementsPanel extends PluginPanel {
             updatePanel();
         }
     }
-
-//    /**
-//     * Handles items that have multiple options (separated by |)
-//     */
-//    private void handleMultiIconItem(String itemName, int itemId) {
-//        String[] itemOptions = itemName.split("\\|");
-//        List<BufferedImage> icons = new ArrayList<>();
-//
-//        // Get the first item ID if provided
-//        int firstItemId = itemId;
-//
-//        // Process each item option
-//        for (String option : itemOptions) {
-//            log.debug("option: {}", option);
-//            String trimmedOption = option.trim();
-//            int optionItemId = -1;
-//
-//            // Try to find item ID for this option
-//            List<ItemPrice> itemPrices = itemManager.search(trimmedOption);
-//            if (!itemPrices.isEmpty()) {
-//                optionItemId = itemPrices.get(0).getId();
-//                // If this is the first valid item ID found, use it as the main item ID
-//                if (firstItemId == -1) {
-//                    firstItemId = optionItemId;
-//                }
-//            }
-//
-//            // Get icon for this option
-//            BufferedImage icon = getItemIcon(optionItemId, trimmedOption);
-//            icons.add(icon);
-//        }
-//
-//        // Create a multi-icon item with all the icons
-//        MultiIconItem multiIconItem = new MultiIconItem(itemName, firstItemId, icons);
-//        missingItems.add(multiIconItem);
-//        updatePanel();
-//    }
 
     @Getter
     public enum AchievementHilts {
@@ -438,22 +394,6 @@ public class MissingRequirementsPanel extends PluginPanel {
         }
 
         return itemPrices.get(0).getId();
-    }
-
-    public String getItemNameFromId(int itemId) {
-        ItemComposition ic = itemManager.getItemComposition(itemId);
-        return ic.getName();
-    }
-
-    public boolean skipProcessingByName(String itemName, JsonArray untradableItemIds) {
-        String searchName = itemName.replace("\"", "");
-        List<ItemPrice> itemPrices = itemManager.search(searchName);
-        if (itemPrices.isEmpty()) {
-            return true;
-        }
-
-        Stream<JsonElement> stream = StreamSupport.stream(untradableItemIds.spliterator(), true);
-        return stream.anyMatch(e -> e.getAsInt() == itemPrices.get(0).getId());
     }
 
     /**
