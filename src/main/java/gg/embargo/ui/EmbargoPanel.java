@@ -78,7 +78,7 @@ public class EmbargoPanel extends PluginPanel {
 
     void setupVersionPanel() {
         //Set up Embargo Clan Version at top of Version panel
-        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.0"));
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.1"));
         version.setFont(smallFont);
 
         //Set version's font
@@ -189,7 +189,7 @@ public class EmbargoPanel extends PluginPanel {
                 var username = client.getLocalPlayer().getName();
                 loggedLabel.setText(htmlLabel("Signed in as ", " " + username));
 
-                boolean isRegisteredWithClan = dataManager.checkRegistered(username);
+                boolean isRegisteredWithClan = dataManager.isUserRegistered(username);
 
                 if (isRegisteredWithClan) {
                     //remove "Sign in to send..."
@@ -218,6 +218,8 @@ public class EmbargoPanel extends PluginPanel {
                     communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
                     //JsonArray currentGearReqs = embargoProfileData.getAsJsonArray("currentGearRequirements");
                     JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
+                    JsonArray missingUntradableItemIdReqs = embargoProfileData
+                            .getAsJsonArray("missingUntradableItemIds");
 
                     //JsonObject nextRank = embargoProfileData.getAsJsonObject("nextRank");
                     JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
@@ -231,12 +233,22 @@ public class EmbargoPanel extends PluginPanel {
 
                     currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
-
-                    //Build out the missing requirements panel
-                    if (missingGearReqs.size() > 0) {
+                    // Build out the missing requirements panel
+                    if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
                         for (JsonElement mi : missingGearReqs) {
-                            clientThread.invokeLater(() ->
-                                    missingRequirementsPanelX.addMissingItem(String.valueOf(mi), missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
+                            clientThread.invokeLater(() -> {
+                                boolean skipProcessing = missingRequirementsPanelX
+                                        .skipProcessingByName(String.valueOf(mi), missingUntradableItemIdReqs);
+                                if (!skipProcessing) {
+                                    missingRequirementsPanelX.addMissingItem(String.valueOf(mi),
+                                            missingRequirementsPanelX.findItemIdByName(String.valueOf(mi)));
+                                } else {
+                                    for (JsonElement mu : missingUntradableItemIdReqs) {
+                                        String missingItemName = missingRequirementsPanelX.getItemNameFromId(mu.getAsInt());
+                                        missingRequirementsPanelX.addMissingItem(missingItemName, mu.getAsInt());
+                                    }
+                                }
+                            });
                         }
 
                         // Clear the panel first

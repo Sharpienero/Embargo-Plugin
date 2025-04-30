@@ -120,7 +120,7 @@ public class EmbargoPlugin extends Plugin {
 
 		if (client != null) {
 			if (client.getGameState() == GameState.LOGGED_IN) {
-				if (dataManager.checkRegistered(client.getLocalPlayer().getName())) {
+				if (dataManager.isUserRegistered(client.getLocalPlayer().getName())) {
 					embargoPanel.updateLoggedIn(false);
 				}
 			}
@@ -209,7 +209,7 @@ public class EmbargoPlugin extends Plugin {
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				String username = localPlayer.getName();
-				if (dataManager.checkRegistered(username)) {
+				if (dataManager.isUserRegistered(username)) {
 					embargoPanel.updateLoggedIn(true);
 					return true;
 
@@ -280,7 +280,7 @@ public class EmbargoPlugin extends Plugin {
 		Player localPlayer = client.getLocalPlayer();
 		if (localPlayer != null) {
 			String username = localPlayer.getName();
-			if (dataManager.checkRegistered(username)) {
+			if (dataManager.isUserRegistered(username)) {
 				log.debug("updateProfileAfterLoggedIn Member registered");
 				embargoPanel.updateLoggedIn(true);
 			}

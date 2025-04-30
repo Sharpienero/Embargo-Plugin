@@ -1,8 +1,11 @@
 package gg.embargo.ui;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ItemComposition;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
@@ -22,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 public class MissingRequirementsPanel extends PluginPanel {
@@ -89,6 +94,18 @@ public class MissingRequirementsPanel extends PluginPanel {
      * @param itemId The item ID in RuneScape
      */
     public void addMissingItem(String itemName, int itemId) {
+        if (itemName.isEmpty() && itemId != -1) {
+            // get item name by id
+            ItemComposition ic = itemManager.getItemComposition(itemId);
+
+            // generate icon
+            BufferedImage itemIcon = getItemIcon(itemId, ic.getName());
+            // add to missing items panel
+            missingItems.add(new MissingItem(ic.getName(), itemId, itemIcon));
+            updatePanel();
+            return;
+        }
+
         String cleanedName = itemName.replace("\"", "");
         
         // Check if item already exists
@@ -131,8 +148,16 @@ public class MissingRequirementsPanel extends PluginPanel {
 
     public BufferedImage getHiltImageFromName(String name) {
         String lowercaseName = name.toLowerCase();
+        // Strip out extra "'s
+        lowercaseName = lowercaseName.replace("\"", "");
+
         
         for (AchievementHilts hilt : AchievementHilts.values()) {
+            //Shortcut to bypass conflicting name with "Master" being in "Grandmaster"
+            if (lowercaseName.contains("grand")) {
+                return getItemIcon(AchievementHilts.GRANDMASTER.getItemId(), "Ghommal's_avernic_defender_6");
+            }
+
             if (lowercaseName.contains(hilt.name().toLowerCase())) {
                 return getItemIcon(hilt.getItemId(), "Ghommal's_avernic_defender_" + (hilt.ordinal() + 1));
             }
@@ -358,6 +383,22 @@ public class MissingRequirementsPanel extends PluginPanel {
         }
 
         return itemPrices.get(0).getId();
+    }
+
+    public String getItemNameFromId(int itemId) {
+        ItemComposition ic = itemManager.getItemComposition(itemId);
+        return ic.getName();
+    }
+
+    public boolean skipProcessingByName(String itemName, JsonArray untradableItemIds) {
+        String searchName = itemName.replace("\"", "");
+        List<ItemPrice> itemPrices = itemManager.search(searchName);
+        if (itemPrices.isEmpty()) {
+            return true;
+        }
+
+        Stream<JsonElement> stream = StreamSupport.stream(untradableItemIds.spliterator(), true);
+        return stream.anyMatch(e -> e.getAsInt() == itemPrices.get(0).getId());
     }
 
     /**

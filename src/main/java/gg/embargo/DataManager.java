@@ -50,9 +50,12 @@ import okio.BufferedSource;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Singleton
@@ -356,7 +359,29 @@ public class DataManager {
         return new JsonObject();
     }
 
-    public boolean checkRegistered(String username) {
+    private final AtomicBoolean apiFailureMode = new AtomicBoolean(false);
+    private final AtomicLong lastApiFailure = new AtomicLong(0);
+    private static final long API_RETRY_DELAY_MINUTES = 5; // Wait 5 minutes between retries
+
+    /**
+     * Checks if the user is registered with proper error handling
+     */
+    public boolean isUserRegistered(String username) {
+        // If we're in API failure mode, only retry after the delay period
+            long currentTime = Instant.now().getEpochSecond();
+            long failureTime = lastApiFailure.get();
+            long elapsedMinutes = TimeUnit.SECONDS.toMinutes(currentTime - failureTime);
+
+            if (apiFailureMode.get() && elapsedMinutes < API_RETRY_DELAY_MINUTES) {
+                // Return cached result or default to true to prevent freezing
+                return false;
+            } else {
+                // Reset failure mode to try again
+                apiFailureMode.set(false);
+            }
+
+
+        try {
         Request request = new Request.Builder()
                 .url(CHECK_REGISTRATION_ENDPOINT + '/' + username)
                 .get()
@@ -369,17 +394,31 @@ public class DataManager {
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
             if (response.isSuccessful()) {
                 response.close();
+                    apiFailureMode.set(false);
                 return true;
 
             } else {
                 log.error("Failed to check if user is registered.");
+                    apiFailureMode.set(true);
                 response.close();
             }
         } catch (IOException ioException) {
             log.error("Failed to check if user is registered.");
+                apiFailureMode.set(true);
         }
 
         return false;
+        } catch (Exception e) {
+            // Log once and enter failure mode
+            if (!apiFailureMode.get()) {
+                log.error("Failed to check if user is registered. API may be down. Will retry in {} minutes.",
+                        API_RETRY_DELAY_MINUTES, e);
+                apiFailureMode.set(true);
+                lastApiFailure.set(Instant.now().getEpochSecond());
+            }
+            
+            return false;
+            }
     }
 
     public void uploadLoot(LootReceived event) {
@@ -558,7 +597,7 @@ public class DataManager {
         if (RuneScapeProfileType.getCurrent(client) == RuneScapeProfileType.BETA)
             return;
 
-        if (!checkRegistered(client.getLocalPlayer().getName())) {
+        if (!isUserRegistered(client.getLocalPlayer().getName())) {
             return;
         }
 
@@ -834,7 +873,7 @@ public class DataManager {
             submitToAPI();
             if (client.getLocalPlayer() != null) {
                 String username = client.getLocalPlayer().getName();
-                if (checkRegistered(username)) {
+                if (isUserRegistered(username)) {
                     //log.debug("updateProfileAfterLoggedIn Member registered");
                     embargoPanel.updateLoggedIn(true);
                 }
