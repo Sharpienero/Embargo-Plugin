@@ -219,11 +219,9 @@ public class EmbargoPanel extends PluginPanel {
 
                     JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
                     embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints)) + Integer.parseInt(String.valueOf(currentCommunityPoints))))));
-                            (htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints))
                     JsonElement getCurrentCAName = embargoProfileData.get("currentHighestCAName");
                     accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
                     communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
-                    communityScoreLabel.setText(htmlLabel("Community Score: ",
                     JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
                     JsonArray missingUntradableItemIdReqs = embargoProfileData
                             .getAsJsonArray("missingUntradableItemIds");
