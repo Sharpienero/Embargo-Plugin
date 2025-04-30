@@ -8,10 +8,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.ItemComposition;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.info.JRichTextPane;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -45,12 +43,8 @@ public class EmbargoPanel extends PluginPanel {
     @Inject
     private ClientThread clientThread;
 
-    @Inject
-    private ItemManager itemManager;
-
     @Setter
     public boolean isLoggedIn = false;
-
 
     // Keep track of all boxes
     //private final ArrayList<ItemID> items = new ArrayList<>();
@@ -72,7 +66,6 @@ public class EmbargoPanel extends PluginPanel {
     private final Font smallFont = FontManager.getRunescapeSmallFont();
     final JPanel missingRequirementsContainer = new JPanel(new BorderLayout(5, 0));
 
-    //final JLabel playerNameLabel = new JLabel("Missing Requirements For Next Rank", JLabel.LEFT);
     @Inject
     private EmbargoPanel() {
     }
@@ -145,30 +138,38 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     void setupMissingItemsPanel() {
-        if (client == null || client.getGameState() == GameState.LOADING || client.getGameState() == GameState.LOGIN_SCREEN) {
+        // Clear any existing content
             missingRequirementsContainer.removeAll();
-            this.remove(missingRequirementsContainer);
-            this.revalidate();
-        }
-        this.add(missingRequirementsContainer);
-        this.revalidate();
+        missingRequirementsPanel.removeAll();
+
+        // Set up container styling
         missingRequirementsContainer.setBorder(new EmptyBorder(7, 7, 7, 7));
         missingRequirementsContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-
         missingRequirementsContainer.setFont(FontManager.getRunescapeSmallFont());
         missingRequirementsContainer.setForeground(Color.WHITE);
-        missingRequirementsContainer.add(missingRequirementsPanel);
 
+        // Set up panel styling
         missingRequirementsPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         missingRequirementsPanel.setBorder(new EmptyBorder(10, 0, 10, 0));
         missingRequirementsPanel.setLayout(new GridLayout(1, 1));
 
-        //Push text to top of component
+        // Always add the default message initially
+        missingRequiredItemsLabel
+                .setText(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+        missingRequiredItemsLabel.setFont(smallFont);
+        missingRequiredItemsLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        missingRequirementsPanel.add(missingRequiredItemsLabel);
+
+        // Add panel to container
+        missingRequirementsContainer.add(missingRequirementsPanel, BorderLayout.CENTER);
+
+        // Add container to main panel
         this.add(missingRequirementsContainer, BorderLayout.NORTH);
+        this.revalidate();
     }
 
     void addSidePanel() {
-        //Add the panels to the side plugin
+        // Add the panels to the side plugin
         this.add(versionPanel, BorderLayout.NORTH);
         setupMissingItemsPanel();
         this.add(this.setUpQuickLinks(), BorderLayout.SOUTH);
@@ -179,13 +180,13 @@ public class EmbargoPanel extends PluginPanel {
         this.setUpQuickLinks();
         this.addSidePanel();
 
-        //Update version panel with Embargo plugin information
+        // Update version panel with Embargo plugin information
         updateLoggedIn(false);
     }
 
-    public void init()
-    {
+    public void init() {
         this.setupSidePanel();
+        logOut();
     }
 
     public void updateLoggedIn(boolean scheduled) {
@@ -218,11 +219,11 @@ public class EmbargoPanel extends PluginPanel {
 
                     JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
                     embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints)) + Integer.parseInt(String.valueOf(currentCommunityPoints))))));
-                    //JsonObject currentHighestCombatAchievementTier = embargoProfileData.getAsJsonObject("currentHighestCombatAchievementTier");
+                            (htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints))
                     JsonElement getCurrentCAName = embargoProfileData.get("currentHighestCAName");
                     accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
                     communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
-                    //JsonArray currentGearReqs = embargoProfileData.getAsJsonArray("currentGearRequirements");
+                    communityScoreLabel.setText(htmlLabel("Community Score: ",
                     JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
                     JsonArray missingUntradableItemIdReqs = embargoProfileData
                             .getAsJsonArray("missingUntradableItemIds");
@@ -343,8 +344,7 @@ public class EmbargoPanel extends PluginPanel {
         return false;
     }
 
-    public void reset()
-    {
+    public void reset() {
         eventBus.unregister(this);
         this.updateLoggedIn(false);
     }
@@ -352,8 +352,7 @@ public class EmbargoPanel extends PluginPanel {
     /**
      * Builds a link panel with a given icon, text and url to redirect to.
      */
-    private static JPanel buildLinkPanel(ImageIcon icon, String topText, String bottomText, String url)
-    {
+    private static JPanel buildLinkPanel(ImageIcon icon, String topText, String bottomText, String url) {
         return buildLinkPanel(icon, topText, bottomText, () -> LinkBrowser.browse(url));
     }
 

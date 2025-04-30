@@ -27,10 +27,8 @@ package gg.embargo;
 
 import com.google.common.collect.HashMultimap;
 import com.google.gson.*;
-import gg.embargo.collections.CollectionLogManager;
 import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
-import gg.embargo.manifest.Manifest;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
@@ -87,9 +85,6 @@ public class DataManager {
     private HashSet<Integer> varbitsToCheck;
 
     @Inject
-    private Manifest manifest;
-
-    @Inject
     private ManifestManager manifestManager;
 
     @Getter
@@ -129,6 +124,7 @@ public class DataManager {
          }
      }
 
+    //private static final String MOCK_API_URI = "https://a278d141-927f-433b-8e4b-6d994067900d.mock.pstmn.io/api/";
     private static final String API_URI = "https://embargo.gg/api/";
     private static final String MANIFEST_ENDPOINT = API_URI + APIRoutes.MANIFEST;
     private static final String UNTRACKABLE_POST_ENDPOINT = API_URI + APIRoutes.UNTRACKABLES;
@@ -361,25 +357,30 @@ public class DataManager {
 
     private final AtomicBoolean apiFailureMode = new AtomicBoolean(false);
     private final AtomicLong lastApiFailure = new AtomicLong(0);
-    private static final long API_RETRY_DELAY_MINUTES = 5; // Wait 5 minutes between retries
+    private static final long API_RETRY_DELAY_MINUTES = 1;
 
     /**
      * Checks if the user is registered with proper error handling
      */
     public boolean isUserRegistered(String username) {
+        if (username == null) {
+            return false;
+        }
+        log.debug("Checking if {} is registered with Embargo", username);
         // If we're in API failure mode, only retry after the delay period
             long currentTime = Instant.now().getEpochSecond();
             long failureTime = lastApiFailure.get();
             long elapsedMinutes = TimeUnit.SECONDS.toMinutes(currentTime - failureTime);
 
             if (apiFailureMode.get() && elapsedMinutes < API_RETRY_DELAY_MINUTES) {
+            log.debug("apiFailureMode is true");
                 // Return cached result or default to true to prevent freezing
                 return false;
             } else {
+            log.debug("Setting apiFailureMode to false");
                 // Reset failure mode to try again
                 apiFailureMode.set(false);
             }
-
 
         try {
         Request request = new Request.Builder()
@@ -388,7 +389,7 @@ public class DataManager {
                 .build();
 
         OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
-                .callTimeout(5, TimeUnit.SECONDS)
+                    .callTimeout(2, TimeUnit.SECONDS)
                 .build();
 
         try (Response response = shortTimeoutClient.newCall(request).execute()) {
@@ -400,11 +401,13 @@ public class DataManager {
             } else {
                 log.error("Failed to check if user is registered.");
                     apiFailureMode.set(true);
+                    lastApiFailure.set(Instant.now().getEpochSecond());
                 response.close();
             }
         } catch (IOException ioException) {
             log.error("Failed to check if user is registered.");
                 apiFailureMode.set(true);
+                lastApiFailure.set(Instant.now().getEpochSecond());
         }
 
         return false;

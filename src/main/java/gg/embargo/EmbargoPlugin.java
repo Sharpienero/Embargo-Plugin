@@ -30,6 +30,7 @@ import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
+import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -212,8 +213,6 @@ public class EmbargoPlugin extends Plugin {
 				if (dataManager.isUserRegistered(username)) {
 					embargoPanel.updateLoggedIn(true);
 					return true;
-
-					
 				}
 			}
 			return false;
@@ -225,7 +224,7 @@ public class EmbargoPlugin extends Plugin {
     
 		// Clear both panel references
 		if (embargoPanel != null) {
-			embargoPanel.logOut();
+			SwingUtilities.invokeLater(() -> embargoPanel.logOut());
 		} else {
 			log.debug("embargoPanel is null!!!");
 		}
