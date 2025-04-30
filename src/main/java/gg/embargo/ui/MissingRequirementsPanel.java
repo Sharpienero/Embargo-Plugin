@@ -36,11 +36,11 @@ public class MissingRequirementsPanel extends PluginPanel {
     private static final int TOOLTIP_PADDING = 3;
     private static final Color HOVER_COLOR = ColorScheme.DARKER_GRAY_HOVER_COLOR;
     private static final Color NORMAL_COLOR = ColorScheme.DARKER_GRAY_COLOR;
-    
+
     // Cache for item icons to avoid recreating them
     private final Map<Integer, BufferedImage> iconCache = new ConcurrentHashMap<>();
     private final Map<String, BufferedImage> letterIconCache = new ConcurrentHashMap<>();
-    
+
     private final ItemManager itemManager;
     private final JPanel itemsContainer;
     private final List<MissingItem> missingItems = new ArrayList<>();
@@ -83,7 +83,7 @@ public class MissingRequirementsPanel extends PluginPanel {
         subtitle.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         subtitle.setFont(new Font("SansSerif", Font.ITALIC, 10));
         titlePanel.add(subtitle, BorderLayout.SOUTH);
-        
+
         return titlePanel;
     }
 
@@ -91,7 +91,8 @@ public class MissingRequirementsPanel extends PluginPanel {
      * Adds a missing item to the panel if it doesn't already exist
      * 
      * @param itemName The name of the item
-     * @param itemId The item ID in RuneScape
+     * 
+     * @param itemId   The item ID in RuneScape
      */
     public void addMissingItem(String itemName, int itemId) {
         if (itemName.isEmpty() && itemId != -1) {
@@ -100,6 +101,8 @@ public class MissingRequirementsPanel extends PluginPanel {
 
             // generate icon
             BufferedImage itemIcon = getItemIcon(itemId, ic.getName());
+
+            log.debug("updating icons (empty + itemId != -1) untrackable with {} ", ic.getName());
             // add to missing items panel
             missingItems.add(new MissingItem(ic.getName(), itemId, itemIcon));
             updatePanel();
@@ -107,28 +110,80 @@ public class MissingRequirementsPanel extends PluginPanel {
         }
 
         String cleanedName = itemName.replace("\"", "");
-        
+        cleanedName = cleanedName.replace(" (uncharged)", "");
         // Check if item already exists
+        String finalCleanedName = cleanedName;
         boolean itemExists = missingItems.stream()
-                .anyMatch(item -> item.getItemName().contains(cleanedName));
-      
+                .anyMatch(item -> item.getItemName().contains(finalCleanedName));
+
+        // Technically trackable, but untradable. Special case
+        if (finalCleanedName.toLowerCase().contains("quiver")) {
+            itemId = 28947;
+        }
+
+        if (finalCleanedName.toLowerCase().contains("infernal cape")) {
+            itemId = 21295;
+        }
+
+        //if (finalCleanedName.toLowerCase().contains("|")) {
+            // Handle items with multiple options (separated by |)
+            // if (!itemExists) {
+                //handleMultiIconItem(finalCleanedName, itemId);
+            // }
+            // return;
+        // }
         // Only add if it doesn't exist
         if (!itemExists) {
             BufferedImage itemIcon;
             int finalItemId;
-            
             if (itemName.contains("Combat Achievement")) {
                 finalItemId = getHiltIdFromName(itemName);
                 itemIcon = getHiltImageFromName(itemName.split(" ")[0]);
             } else {
                 finalItemId = itemId;
-                itemIcon = getItemIcon(itemId, cleanedName);
+                itemIcon = getItemIcon(itemId, finalCleanedName);
             }
-            
-            missingItems.add(new MissingItem(cleanedName, finalItemId, itemIcon));
+            missingItems.add(new MissingItem(finalCleanedName, finalItemId, itemIcon));
             updatePanel();
         }
     }
+
+//    /**
+//     * Handles items that have multiple options (separated by |)
+//     */
+//    private void handleMultiIconItem(String itemName, int itemId) {
+//        String[] itemOptions = itemName.split("\\|");
+//        List<BufferedImage> icons = new ArrayList<>();
+//
+//        // Get the first item ID if provided
+//        int firstItemId = itemId;
+//
+//        // Process each item option
+//        for (String option : itemOptions) {
+//            log.debug("option: {}", option);
+//            String trimmedOption = option.trim();
+//            int optionItemId = -1;
+//
+//            // Try to find item ID for this option
+//            List<ItemPrice> itemPrices = itemManager.search(trimmedOption);
+//            if (!itemPrices.isEmpty()) {
+//                optionItemId = itemPrices.get(0).getId();
+//                // If this is the first valid item ID found, use it as the main item ID
+//                if (firstItemId == -1) {
+//                    firstItemId = optionItemId;
+//                }
+//            }
+//
+//            // Get icon for this option
+//            BufferedImage icon = getItemIcon(optionItemId, trimmedOption);
+//            icons.add(icon);
+//        }
+//
+//        // Create a multi-icon item with all the icons
+//        MultiIconItem multiIconItem = new MultiIconItem(itemName, firstItemId, icons);
+//        missingItems.add(multiIconItem);
+//        updatePanel();
+//    }
 
     @Getter
     public enum AchievementHilts {
@@ -151,9 +206,8 @@ public class MissingRequirementsPanel extends PluginPanel {
         // Strip out extra "'s
         lowercaseName = lowercaseName.replace("\"", "");
 
-        
         for (AchievementHilts hilt : AchievementHilts.values()) {
-            //Shortcut to bypass conflicting name with "Master" being in "Grandmaster"
+            // Shortcut to bypass conflicting name with "Master" being in "Grandmaster"
             if (lowercaseName.contains("grand")) {
                 return getItemIcon(AchievementHilts.GRANDMASTER.getItemId(), "Ghommal's_avernic_defender_6");
             }
@@ -172,14 +226,14 @@ public class MissingRequirementsPanel extends PluginPanel {
         if (lowercaseName.contains("grand")) {
             return AchievementHilts.GRANDMASTER.getItemId();
         }
-        
+
         // Check for other hilt types
         for (AchievementHilts hilt : AchievementHilts.values()) {
             if (lowercaseName.contains(hilt.name().toLowerCase())) {
                 return hilt.getItemId();
             }
         }
-        
+
         return 882;
     }
 
@@ -196,12 +250,10 @@ public class MissingRequirementsPanel extends PluginPanel {
      */
     private void updatePanel() {
         itemsContainer.removeAll();
-        
         for (MissingItem item : missingItems) {
             JPanel itemPanel = createItemPanel(item);
             itemsContainer.add(itemPanel);
         }
-        
         revalidate();
         repaint();
     }
@@ -216,19 +268,19 @@ public class MissingRequirementsPanel extends PluginPanel {
         panel.setPreferredSize(new Dimension(CELL_SIZE, CELL_SIZE));
         panel.setMinimumSize(new Dimension(CELL_SIZE, CELL_SIZE));
         panel.setMaximumSize(new Dimension(CELL_SIZE, CELL_SIZE));
-    
+
         // Get the item icon
         JLabel iconLabel = new JLabel(new ImageIcon(item.getIcon()));
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(iconLabel, BorderLayout.CENTER);
         panel.setToolTipText(buildTooltipText(item));
-    
+
         // Add hover effect and click handler to the panel
         panel.addMouseListener(itemMouseAdapter);
-    
+
         return panel;
     }
-    
+
     private MouseAdapter createMouseAdapter() {
         return new MouseAdapter() {
             @Override
@@ -237,27 +289,27 @@ public class MissingRequirementsPanel extends PluginPanel {
                 panel.setBackground(HOVER_COLOR);
                 panel.setCursor(new Cursor(Cursor.HAND_CURSOR));
             }
-        
+
             @Override
             public void mouseExited(MouseEvent e) {
                 JPanel panel = (JPanel) e.getSource();
                 panel.setBackground(NORMAL_COLOR);
                 panel.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
             }
-        
+
             @Override
             public void mouseClicked(MouseEvent e) {
                 JPanel panel = (JPanel) e.getSource();
                 Component[] components = itemsContainer.getComponents();
                 int index = -1;
-                
+
                 for (int i = 0; i < components.length; i++) {
                     if (components[i] == panel) {
                         index = i;
                         break;
                     }
                 }
-                
+
                 if (index >= 0 && index < missingItems.size()) {
                     MissingItem item = missingItems.get(index);
                     if (item.getItemId() == -1) {
@@ -280,7 +332,7 @@ public class MissingRequirementsPanel extends PluginPanel {
             if (cachedIcon != null) {
                 return cachedIcon;
             }
-            
+
             BufferedImage icon = itemManager.getImage(itemId);
             BufferedImage resizedIcon = ImageUtil.resizeImage(icon, CELL_SIZE, CELL_SIZE);
             iconCache.put(itemId, resizedIcon);
@@ -289,18 +341,18 @@ public class MissingRequirementsPanel extends PluginPanel {
             // For letter-based icons, create a cache key
             String letter = getLetterForItem(itemName);
             String cacheKey = letter + "_" + CELL_SIZE;
-            
+
             BufferedImage cachedIcon = letterIconCache.get(cacheKey);
             if (cachedIcon != null) {
                 return cachedIcon;
             }
-            
+
             BufferedImage icon = createLetterIcon(letter);
             letterIconCache.put(cacheKey, icon);
             return icon;
         }
     }
-    
+
     private String getLetterForItem(String itemName) {
         if (itemName.contains("community")) {
             return "CP";
@@ -313,7 +365,7 @@ public class MissingRequirementsPanel extends PluginPanel {
         }
         return itemName.substring(0, 1).toUpperCase();
     }
-    
+
     private BufferedImage createLetterIcon(String letter) {
         BufferedImage icon = new BufferedImage(CELL_SIZE, CELL_SIZE, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = icon.createGraphics();
@@ -322,16 +374,16 @@ public class MissingRequirementsPanel extends PluginPanel {
         g2d.setColor(ColorScheme.MEDIUM_GRAY_COLOR);
         g2d.fillRect(0, 0, CELL_SIZE, CELL_SIZE);
         g2d.setColor(Color.WHITE);
-        
+
         // Calculate appropriate font size based on text length
         int fontSize = 16; // Default font size
         if (letter.length() > 1) {
             // Reduce font size for longer text
             fontSize = Math.max(8, 16 - (letter.length() - 1) * 2);
         }
-        
+
         g2d.setFont(new Font("SansSerif", Font.BOLD, fontSize));
-        
+
         // Ensure text fits within the cell
         FontMetrics fm = g2d.getFontMetrics();
         while (fm.stringWidth(letter) > CELL_SIZE - 2 && fontSize > 8) {
@@ -339,12 +391,12 @@ public class MissingRequirementsPanel extends PluginPanel {
             g2d.setFont(new Font("SansSerif", Font.BOLD, fontSize));
             fm = g2d.getFontMetrics();
         }
-        
+
         int x = (CELL_SIZE - fm.stringWidth(letter)) / 2;
         int y = ((CELL_SIZE - fm.getHeight()) / 2) + fm.getAscent();
         g2d.drawString(letter, x, y);
         g2d.dispose();
-        
+
         return icon;
     }
 
@@ -354,23 +406,23 @@ public class MissingRequirementsPanel extends PluginPanel {
     private String buildTooltipText(MissingItem item) {
         StringBuilder sb = new StringBuilder("<html><body style='padding: ");
         sb.append(TOOLTIP_PADDING).append("px;");
-        
+
         if (item.getItemId() == -1) {
             sb.append(" text-align: center;");
         }
-        
+
         sb.append("'><div style='font-weight: bold;");
-        
+
         if (item.getItemId() != -1) {
             sb.append(" margin-bottom: 3px;");
         }
-        
+
         sb.append("'>").append(item.getItemName()).append("</div>");
-        
+
         if (item.getItemId() != -1) {
             sb.append("<div style='color: #99FFFF; font-style: italic;'>Click to open wiki</div>");
         }
-        
+
         sb.append("</body></html>");
         return sb.toString();
     }
