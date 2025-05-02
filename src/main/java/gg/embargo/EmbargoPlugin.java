@@ -35,6 +35,7 @@ import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -100,6 +101,8 @@ public class EmbargoPlugin extends Plugin {
 
 	private final Map<String, Integer> skillLevelCache = new HashMap<>();
 
+	AtomicBoolean isUsernameRegistered = new AtomicBoolean(false);
+
 	@Provides
 	EmbargoConfig getConfig(ConfigManager configManager) {
 		return configManager.getConfig(EmbargoConfig.class);
@@ -108,6 +111,10 @@ public class EmbargoPlugin extends Plugin {
 	@Override
 	protected void startUp() {
 		log.info("Embargo Clan plugin started!");
+
+		if (dataManager.stopTryingForAccount.get()) {
+			return;
+		}
 
 		initializePanel();
 		initializeManagers();
@@ -121,9 +128,11 @@ public class EmbargoPlugin extends Plugin {
 
 		if (client != null) {
 			if (client.getGameState() == GameState.LOGGED_IN) {
-				if (dataManager.isUserRegistered(client.getLocalPlayer().getName())) {
-					embargoPanel.updateLoggedIn(false);
-				}
+				dataManager.isUserRegisteredAsync(client.getLocalPlayer().getName(), isRegistered -> {
+					if (isRegistered) {
+						embargoPanel.updateLoggedIn(false);
+					}
+				});
 			}
 		}
 	}
@@ -203,19 +212,27 @@ public class EmbargoPlugin extends Plugin {
 	
 	private void handleLoggedIn() {
 		clientThread.invokeLater(() -> {
-			if (client == null) {
+			if (client == null || dataManager.stopTryingForAccount.get()) {
 				return false;
+			}
+
+			if (isUsernameRegistered.get()) {
+				embargoPanel.updateLoggedIn(true);
+				return true;
 			}
 
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				String username = localPlayer.getName();
-				if (dataManager.isUserRegistered(username)) {
-					embargoPanel.updateLoggedIn(true);
-					return true;
-				}
+
+				dataManager.isUserRegisteredAsync(username, isRegistered -> {
+					if (isRegistered) {
+						embargoPanel.updateLoggedIn(true);
+						isUsernameRegistered.set(true);
+					}
+				});
 			}
-			return false;
+			return isUsernameRegistered.get();
 		});
 	}
 	
@@ -276,13 +293,18 @@ public class EmbargoPlugin extends Plugin {
 	}
 	
 	private void updatePlayerRegistrationStatus() {
+		if (dataManager.stopTryingForAccount.get()) {
+			return;
+		}
 		Player localPlayer = client.getLocalPlayer();
 		if (localPlayer != null) {
 			String username = localPlayer.getName();
-			if (dataManager.isUserRegistered(username)) {
-				log.debug("updateProfileAfterLoggedIn Member registered");
-				embargoPanel.updateLoggedIn(true);
-			}
+			dataManager.isUserRegisteredAsync(username, isRegistered -> {
+				if (isRegistered) {
+					log.debug("updateProfileAfterLoggedIn Member registered");
+					embargoPanel.updateLoggedIn(true);
+				}
+			});
 		}
 	}
 

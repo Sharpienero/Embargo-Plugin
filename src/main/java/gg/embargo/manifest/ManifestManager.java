@@ -63,6 +63,7 @@ public class ManifestManager {
                     .header("Pragma", "no-cache")
                     .cacheControl(new CacheControl.Builder().noCache().noStore().build())
                     .build();
+
             okHttpClient.newCall(r).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {

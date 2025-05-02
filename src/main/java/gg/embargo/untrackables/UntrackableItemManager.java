@@ -122,13 +122,13 @@ public class UntrackableItemManager {
                 okHttpClient.newCall(request).enqueue(new Callback() {
                     @Override
                     public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        log.error("Something went wrong inside of untrackable items");
+                        log.error("Something went wrong inside of getUntrackableItems: {}", e.getLocalizedMessage());
                     }
 
                     @Override
                     public void onResponse(@NonNull Call call, @NonNull Response response) {
                         if (response.isSuccessful()) {
-                            log.debug("Successfully submitted untrackable items");
+                            log.debug("Successfully submitted getUntrackableItems");
                         }
                         response.close();
                     }
