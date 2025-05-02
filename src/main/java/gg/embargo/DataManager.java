@@ -76,9 +76,6 @@ public class DataManager {
     private EmbargoPanel embargoPanel;
 
     @Inject
-    private UntrackableItemManager untrackableItemManager;
-
-    @Inject
     private Gson gson;
 
     @Getter
@@ -567,18 +564,18 @@ public class DataManager {
         // changes
         synchronized (this) {
             RuneScapeProfileType r = RuneScapeProfileType.getCurrent(client);
-             HashMap<Integer, Integer> tempVarbData = clearChanges(varbData);
-             HashMap<Integer, Integer> tempVarpData = clearChanges(varpData);
-             HashMap<String, Integer> tempLevelData = clearChanges(levelData);
+            HashMap<Integer, Integer> tempVarbData = clearChanges(varbData);
+            HashMap<Integer, Integer> tempVarpData = clearChanges(varpData);
+            HashMap<String, Integer> tempLevelData = clearChanges(levelData);
 
-             j.add("varb", gson.toJsonTree(tempVarbData));
-             j.add("varp", gson.toJsonTree(tempVarpData));
-             j.add("level", gson.toJsonTree(tempLevelData));
+            j.add("varb", gson.toJsonTree(tempVarbData));
+            j.add("varp", gson.toJsonTree(tempVarpData));
+            j.add("level", gson.toJsonTree(tempLevelData));
 
             parent.addProperty("username", client.getLocalPlayer().getName());
             parent.addProperty("profile", r.name());
             parent.addProperty("version", manifestManager.getLastCheckedManifestVersion());
-             parent.add("data", j);
+            parent.add("data", j);
         }
         return parent;
     }
@@ -609,7 +606,7 @@ public class DataManager {
         if (!hasDataToPush() || client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null)
             return;
 
-        if (RuneScapeProfileType.getCurrent(client) == RuneScapeProfileType.BETA)
+        if (RuneScapeProfileType.getCurrent(client) != RuneScapeProfileType.STANDARD)
             return;
 
         if (!isUserRegistered(client.getLocalPlayer().getName())) {
@@ -620,40 +617,35 @@ public class DataManager {
             return;
         }
 
-        // Move the heavy processing to a background thread
-        CompletableFuture.runAsync(() -> {
-            try {
-                // Prepare data in background thread
-                JsonObject postRequestBody = convertToJson();
+        try {
+            JsonObject payload = convertToJson();
 
-                // Then submit the HTTP request
-                var RequestBuilder = new Request.Builder().url("https://embargo.gg/api/untrackables")
-                        .addHeader("Content-Type", "application/json")
-                        .post(RequestBody.create(JSON, postRequestBody.toString())).build();
+            okHttpClient.newCall(new Request.Builder().url(UNTRACKABLE_POST_ENDPOINT)
+                    .post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    log.error(e.getLocalizedMessage());
+                    restoreData(payload);
+                    log.error("Failed to submit player in submitToAPI, restoring data. Cause of failure:", e);
+                }
 
-                okHttpClient.newCall(RequestBuilder).enqueue(new Callback() {
-                    @Override
-                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                        restoreData(postRequestBody);
-                        log.error("Failed to submit player in submitToAPI, restoring data. Cause of failure:", e);
-                    }
-
-                    @Override
-                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                        // Update what we want to track on the fly
-                        if (response.isSuccessful()) {
-                            log.debug("Successfully uploaded untrackable items");
-                            response.close();
-                            return;
-                        }
-
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (response.isSuccessful()) {
+                        log.debug("Successfully uploaded untrackable items");
                         response.close();
+                        return;
+                    } else {
+                        response.close();
+                        log.error("submitToAPI onResponse returned, but without success");
                     }
-                });
-            } catch (Exception e) {
-                log.error("Error preparing data for API submission", e);
-            }
-        });
+
+                    response.close();
+                }
+            });
+        } catch (Exception e) {
+            log.error("Error preparing data for API submission", e);
+        }
     }
 
     private HashSet<Integer> parseSet(JsonArray j) {
