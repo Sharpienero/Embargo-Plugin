@@ -56,6 +56,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 @Slf4j
 @Singleton
@@ -92,6 +93,9 @@ public class DataManager {
     @Getter
     @Setter
     private int lastManifestVersion = -1;
+
+    AtomicBoolean isUsernameRegistered = new AtomicBoolean(false);
+    public AtomicBoolean stopTryingForAccount = new AtomicBoolean(false);
 
     private int[] oldVarps;
 
@@ -369,13 +373,28 @@ public class DataManager {
     private static final long API_RETRY_DELAY_MINUTES = 1;
 
     /**
-     * Checks if the user is registered with proper error handling
+     * Checks if a user is registered with Embargo asynchronously
+     * @param username The username to check
+     * @param callback Callback to handle the result
      */
-    public boolean isUserRegistered(String username) {
+    public void isUserRegisteredAsync(String username, Consumer<Boolean> callback) {
         if (username == null) {
-            return false;
+            callback.accept(false);
+            return;
         }
+
+        if (stopTryingForAccount.get()) {
+            callback.accept(false);
+            return;
+        }
+
+        if (isUsernameRegistered.get()) {
+            callback.accept(true);
+            return;
+        }
+
         log.debug("Checking if {} is registered with Embargo", username);
+
         // If we're in API failure mode, only retry after the delay period
         long currentTime = Instant.now().getEpochSecond();
         long failureTime = lastApiFailure.get();
@@ -383,43 +402,67 @@ public class DataManager {
 
         if (apiFailureMode.get() && elapsedMinutes < API_RETRY_DELAY_MINUTES) {
             log.debug("apiFailureMode is true, skipping execution for {} minute(s)", API_RETRY_DELAY_MINUTES);
-            // Return cached result or default to true to prevent freezing
-            return false;
+            callback.accept(false);
+            return;
         }
 
         apiFailureMode.set(false);
 
         try {
             Request request = new Request.Builder()
-                    .url(CHECK_REGISTRATION_ENDPOINT + '/' + username)
+                    .url(CHECK_REGISTRATION_ENDPOINT + "/" + username)
                     .get()
                     .build();
 
+            // Create a client with shorter timeout for this specific check
             OkHttpClient shortTimeoutClient = okHttpClient.newBuilder()
                     .callTimeout(5, TimeUnit.SECONDS)
                     .build();
 
-            // TODO - Change to enqueue
-            try (Response response = shortTimeoutClient.newCall(request).execute()) {
-                if (response.isSuccessful()) {
-                    log.debug("{} is registered, return true", username);
-                    response.close();
-                    apiFailureMode.set(false);
-                    return true;
-                } else {
+            shortTimeoutClient.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
                     log.error("Failed to check if {} is registered with Embargo's database", username);
                     apiFailureMode.set(true);
                     lastApiFailure.set(Instant.now().getEpochSecond());
-                    response.close();
+                    callback.accept(false);
                 }
-            } catch (IOException ioException) {
-                log.debug("Failed to check if {} is registered with Embargo's database {}", username,
-                        ioException.getLocalizedMessage());
-                apiFailureMode.set(true);
-                lastApiFailure.set(Instant.now().getEpochSecond());
-            }
 
-            return false;
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    try (response) {
+                        if (response.isSuccessful()) {
+                            String responseBody = response.body().string();
+                            JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+                            if (jsonResponse != null && jsonResponse.has("message") && "registered".equals(jsonResponse.get("message").getAsString())) {
+                                log.debug("{} is registered, return true", username);
+                                isUsernameRegistered.set(true);
+                                callback.accept(true);
+                            } else {
+                                log.debug("{} is NOT registered, return false", username);
+                                stopTryingForAccount.set(true);
+                                callback.accept(false);
+                            }
+                            apiFailureMode.set(false);
+
+                        } else {
+                            String responseBody = response.body().string();
+                            JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+                            if (jsonResponse != null && jsonResponse.has("message") && "not registered".equals(jsonResponse.get("message").getAsString())) {
+                                stopTryingForAccount.set(true);
+                                callback.accept(false);
+                                return;
+                            }
+                            log.error("Failed to check if {} is registered with Embargo's database. Status: {}",
+                                    username, response.code());
+                            apiFailureMode.set(true);
+                            lastApiFailure.set(Instant.now().getEpochSecond());
+                            callback.accept(false);
+                            isUsernameRegistered.set(false);
+                        }
+                    }
+                }
+            });
         } catch (Exception e) {
             // Log once and enter failure mode
             if (!apiFailureMode.get()) {
@@ -427,11 +470,12 @@ public class DataManager {
                         API_RETRY_DELAY_MINUTES, e);
                 apiFailureMode.set(true);
                 lastApiFailure.set(Instant.now().getEpochSecond());
+                isUsernameRegistered.set(false);
             }
-
-            return false;
+            callback.accept(false);
         }
     }
+
 
     public void uploadLoot(LootReceived event) {
         JsonObject payload = getJsonObject(event);
@@ -603,15 +647,16 @@ public class DataManager {
     }
 
     protected void submitToAPI() {
-        if (!hasDataToPush() || client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null)
+        if (!hasDataToPush() || client.getLocalPlayer() == null || client.getLocalPlayer().getName() == null || stopTryingForAccount.get())
             return;
 
         if (RuneScapeProfileType.getCurrent(client) != RuneScapeProfileType.STANDARD)
             return;
 
-        if (!isUserRegistered(client.getLocalPlayer().getName())) {
-            return;
-        }
+        isUserRegisteredAsync(client.getLocalPlayer().getName(), isRegistered -> {
+            if (!isRegistered) {
+                return;
+            }
 
         if (client.getGameState() == GameState.LOGIN_SCREEN || client.getGameState() == GameState.HOPPING) {
             return;
@@ -622,30 +667,31 @@ public class DataManager {
 
             okHttpClient.newCall(new Request.Builder().url(UNTRACKABLE_POST_ENDPOINT)
                     .post(RequestBody.create(JSON, payload.toString())).build()).enqueue(new Callback() {
-                @Override
-                public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    log.error(e.getLocalizedMessage());
-                    restoreData(payload);
-                    log.error("Failed to submit player in submitToAPI, restoring data. Cause of failure:", e);
-                }
+                        @Override
+                        public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                            log.error(e.getLocalizedMessage());
+                            restoreData(payload);
+                            log.error("Failed to submit player in submitToAPI, restoring data. Cause of failure:", e);
+                        }
 
-                @Override
-                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    if (response.isSuccessful()) {
-                        log.debug("Successfully uploaded untrackable items");
-                        response.close();
-                        return;
-                    } else {
-                        response.close();
-                        log.error("submitToAPI onResponse returned, but without success");
-                    }
+                        @Override
+                        public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                            if (response.isSuccessful()) {
+                                log.debug("Successfully uploaded untrackable items");
+                                response.close();
+                                return;
+                            } else {
+                                response.close();
+                                log.error("submitToAPI onResponse returned, but without success");
+                            }
 
-                    response.close();
-                }
-            });
+                            response.close();
+                        }
+                    });
         } catch (Exception e) {
             log.error("Error preparing data for API submission", e);
         }
+    });
     }
 
     private HashSet<Integer> parseSet(JsonArray j) {
@@ -868,15 +914,24 @@ public class DataManager {
 
     @Schedule(period = 10, unit = ChronoUnit.SECONDS, asynchronous = true)
     public void scheduledSubmit() {
+        if (stopTryingForAccount.get()) {
+            return;
+        }
         if (client != null
                 && (client.getGameState() != GameState.HOPPING && client.getGameState() != GameState.LOGIN_SCREEN)) {
             submitToAPI();
             if (client.getLocalPlayer() != null) {
                 String username = client.getLocalPlayer().getName();
-                if (isUserRegistered(username)) {
-                    // log.debug("updateProfileAfterLoggedIn Member registered");
-                    embargoPanel.updateLoggedIn(true);
-                }
+
+                isUserRegisteredAsync(username, isRegistered -> {
+                    if (isRegistered) {
+                        embargoPanel.updateLoggedIn(true);
+                    } else {
+                        embargoPanel.isLoggedIn = false;
+                        embargoPanel.updateLoggedIn(false);
+                        embargoPanel.logOut();
+                    }
+                });
             }
         } else {
             // log.debug("User is hopping or logged out, do not send data");

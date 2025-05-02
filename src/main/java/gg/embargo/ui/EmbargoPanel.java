@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import gg.embargo.DataManager;
+import gg.embargo.EmbargoPlugin;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -194,106 +195,120 @@ public class EmbargoPanel extends PluginPanel {
     }
 
     public void updateLoggedIn(boolean scheduled) {
+        if (dataManager.stopTryingForAccount.get()) {
+            emailLabel.setText("Account not registered with Embargo");
+            missingRequirementsPanelX.removeAll();
+            missingRequirementsContainer.removeAll();
+            missingRequirementsPanel.removeAll();
+            missingRequiredItemsLabel.removeAll();
+            missingRequirementsContainer.removeAll();
+            missingRequirementsContainer.revalidate();
+            missingRequirementsContainer.repaint();
+            return;
+        }
         if (!isLoggedIn || scheduled) {
             if (client != null && client.getLocalPlayer() != null) {
                 this.isLoggedIn = true;
                 var username = client.getLocalPlayer().getName();
                 loggedLabel.setText(htmlLabel("Signed in as ", " " + username));
 
-                boolean isRegisteredWithClan = dataManager.isUserRegistered(username);
 
-                if (isRegisteredWithClan) {
-                    // remove "Sign in to send..."
-                    versionPanel.remove(emailLabel);
+                dataManager.isUserRegisteredAsync(username, isRegistered -> {
+                    if (!isRegistered) {
+                        emailLabel.setText("Account not registered with Embargo");
+                        return;
+                    }
+                });
 
-                    // re-register labels with panel
-                    versionPanel.add(isRegisteredWithClanLabel);
-                    versionPanel.add(embargoScoreLabel);
-                    versionPanel.add(accountScoreLabel);
-                    versionPanel.add(communityScoreLabel);
-                    versionPanel.add(currentRankLabel);
-                    versionPanel.add(currentCALabel);
+                // remove "Sign in to send..."
+                versionPanel.remove(emailLabel);
 
-                    isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
+                // re-register labels with panel
+                versionPanel.add(isRegisteredWithClanLabel);
+                versionPanel.add(embargoScoreLabel);
+                versionPanel.add(accountScoreLabel);
+                versionPanel.add(communityScoreLabel);
+                versionPanel.add(currentRankLabel);
+                versionPanel.add(currentCALabel);
 
-                    // get gear asynchronously
-                    dataManager.getProfileAsync(username).thenAccept(embargoProfileData -> {
-                        // This code runs when the profile data is received
-                        // We need to run UI updates on the client thread
-                        clientThread.invokeLater(() -> {
-                            JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
-                            JsonElement currentCommunityPoints = embargoProfileData
-                                    .getAsJsonPrimitive("communityPoints");
+                isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
 
-                            embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " +
-                                    (Integer.parseInt(String.valueOf(currentAccountPoints)) +
-                                            Integer.parseInt(String.valueOf(currentCommunityPoints))))));
+                // get gear asynchronously
+                dataManager.getProfileAsync(username).thenAccept(embargoProfileData -> {
+                    // This code runs when the profile data is received
+                    // We need to run UI updates on the client thread
+                    clientThread.invokeLater(() -> {
+                        JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
+                        JsonElement currentCommunityPoints = embargoProfileData
+                                .getAsJsonPrimitive("communityPoints");
 
-                            JsonElement getCurrentCAName = embargoProfileData.get("currentHighestCAName");
-                            accountScoreLabel.setText(htmlLabel("Account Score: ",
-                                    String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
+                        embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " +
+                                (Integer.parseInt(String.valueOf(currentAccountPoints)) +
+                                        Integer.parseInt(String.valueOf(currentCommunityPoints))))));
 
-                            communityScoreLabel.setText(htmlLabel("Community Score: ",
-                                    String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
+                        JsonElement getCurrentCAName = embargoProfileData.get("currentHighestCAName");
+                        accountScoreLabel.setText(htmlLabel("Account Score: ",
+                                String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
 
-                            JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
-                            JsonArray missingUntradableItemIdReqs = embargoProfileData
-                                    .getAsJsonArray("missingUntradableItemIds");
+                        communityScoreLabel.setText(htmlLabel("Community Score: ",
+                                String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
 
-                            JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
-                            JsonElement currentRankName = currentRank.get("name");
+                        JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
+                        JsonArray missingUntradableItemIdReqs = embargoProfileData
+                                .getAsJsonArray("missingUntradableItemIds");
 
-                            var currentRankDisplay = String.valueOf(currentRankName).replace("\"", "");
-                            currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankDisplay));
+                        JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
+                        JsonElement currentRankName = currentRank.get("name");
 
-                            var displayCAName = String.valueOf(getCurrentCAName).replace("\"", "");
-                            displayCAName = displayCAName.replace(" Combat Achievement", "");
+                        var currentRankDisplay = String.valueOf(currentRankName).replace("\"", "");
+                        currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankDisplay));
 
-                            currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
+                        var displayCAName = String.valueOf(getCurrentCAName).replace("\"", "");
+                        displayCAName = displayCAName.replace(" Combat Achievement", "");
 
-                            ArrayList<String> alreadyProcessed = new ArrayList<>();
+                        currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
-                            // Build out the missing requirements panel
-                            if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
-                                for (JsonElement mi : missingGearReqs) {
-                                    alreadyProcessed.add(mi.getAsString());
-                                    log.debug("Processing {} in missingGearReqs", mi.getAsString());
-                                    clientThread.invokeLater(
-                                            () -> missingRequirementsPanelX.addMissingItem(String.valueOf(mi),
-                                                    missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
-                                }
+                        ArrayList<String> alreadyProcessed = new ArrayList<>();
 
-                                for (JsonElement mu : missingUntradableItemIdReqs) {
-                                    if (alreadyProcessed.contains(mu.getAsString())) {
-                                        log.debug("{} already added, skipping missingUntradableItemIdReqs",
-                                                mu.getAsString());
-                                        continue;
-                                    }
-                                    missingRequirementsPanelX.addMissingItem("", mu.getAsInt());
-                                }
-
-                                // Clear the panel first
-                                missingRequirementsPanel.removeAll();
-
-                                // Add only the missingRequirementsPanelX (not the label)
-                                missingRequirementsPanel.add(missingRequirementsPanelX);
-
-                                // Refresh the panel
-                                missingRequirementsPanel.revalidate();
-                                missingRequirementsPanel.repaint();
-                            } else {
-                                missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
+                        // Build out the missing requirements panel
+                        if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
+                            for (JsonElement mi : missingGearReqs) {
+                                alreadyProcessed.add(mi.getAsString());
+                                log.debug("Processing {} in missingGearReqs", mi.getAsString());
+                                clientThread.invokeLater(
+                                        () -> missingRequirementsPanelX.addMissingItem(String.valueOf(mi),
+                                                missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
                             }
-                        });
-                    }).exceptionally(ex -> {
-                        log.error("Error fetching profile data", ex);
-                        return null;
-                    });
 
-                    this.isLoggedIn = true;
-                } else {
-                    emailLabel.setText("Account not registered with Embargo");
-                }
+                            for (JsonElement mu : missingUntradableItemIdReqs) {
+                                if (alreadyProcessed.contains(mu.getAsString())) {
+                                    log.debug("{} already added, skipping missingUntradableItemIdReqs",
+                                            mu.getAsString());
+                                    continue;
+                                }
+                                missingRequirementsPanelX.addMissingItem("", mu.getAsInt());
+                            }
+
+                            // Clear the panel first
+                            missingRequirementsPanel.removeAll();
+
+                            // Add only the missingRequirementsPanelX (not the label)
+                            missingRequirementsPanel.add(missingRequirementsPanelX);
+
+                            // Refresh the panel
+                            missingRequirementsPanel.revalidate();
+                            missingRequirementsPanel.repaint();
+                        } else {
+                            missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
+                        }
+                    });
+                }).exceptionally(ex -> {
+                    log.error("Error fetching profile data", ex);
+                    return null;
+                });
+
+                this.isLoggedIn = true;
+
             }
         }
     }
