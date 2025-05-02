@@ -47,11 +47,13 @@ public class EmbargoPanel extends PluginPanel {
     public boolean isLoggedIn = false;
 
     // Keep track of all boxes
-    //private final ArrayList<ItemID> items = new ArrayList<>();
+    // private final ArrayList<ItemID> items = new ArrayList<>();
     JPanel versionPanel = new JPanel();
     JPanel missingRequirementsPanel = new JPanel();
-    private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
-    private static final ImageIcon DISCORD_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
+    private static final ImageIcon ARROW_RIGHT_ICON = new ImageIcon(
+            ImageUtil.loadImageResource(EmbargoPanel.class, "/util/arrow_right.png"));
+    private static final ImageIcon DISCORD_ICON = new ImageIcon(
+            ImageUtil.loadImageResource(EmbargoPanel.class, "/discord_icon.png"));
     static ImageIcon GITHUB_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/github_icon.png"));
     static ImageIcon WEBSITE_ICON = new ImageIcon(ImageUtil.loadImageResource(EmbargoPanel.class, "/website_icon.png"));
     private final JRichTextPane emailLabel = new JRichTextPane();
@@ -62,7 +64,8 @@ public class EmbargoPanel extends PluginPanel {
     private final JLabel currentRankLabel = new JLabel(htmlLabel("Current Rank:", " N/A"));
     private final JLabel isRegisteredWithClanLabel = new JLabel(htmlLabel("Account registered:", " No"));
     private final JLabel currentCALabel = new JLabel(htmlLabel("Current TA Tier:", " N/A"));
-    final JLabel missingRequiredItemsLabel = new JLabel(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+    final JLabel missingRequiredItemsLabel = new JLabel(
+            htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
     private final Font smallFont = FontManager.getRunescapeSmallFont();
     final JPanel missingRequirementsContainer = new JPanel(new BorderLayout(5, 0));
 
@@ -70,26 +73,26 @@ public class EmbargoPanel extends PluginPanel {
     private EmbargoPanel() {
     }
 
-    private String htmlLabel(String key, String value)
-    {
-        return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value + "</span></body></html>";
+    private String htmlLabel(String key, String value) {
+        return "<html><body style = 'color:#a5a5a5'>" + key + "<span style = 'color:white'>" + value
+                + "</span></body></html>";
     }
 
     void setupVersionPanel() {
-        //Set up Embargo Clan Version at top of Version panel
+        // Set up Embargo Clan Version at top of Version panel
         JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.1"));
         version.setFont(smallFont);
 
-        //Set version's font
+        // Set version's font
         JLabel revision = new JLabel();
         revision.setFont(smallFont);
 
-        //Set up versionPanel
+        // Set up versionPanel
         versionPanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         versionPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         versionPanel.setLayout(new GridLayout(0, 1));
 
-        //Set up custom embargo labels
+        // Set up custom embargo labels
         isRegisteredWithClanLabel.setFont(smallFont);
         isRegisteredWithClanLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 
@@ -132,14 +135,15 @@ public class EmbargoPanel extends PluginPanel {
 
         actionsContainer.add(buildLinkPanel(DISCORD_ICON, "Join us on our", "Discord", "https://discord.gg/embargo"));
         actionsContainer.add(buildLinkPanel(WEBSITE_ICON, "Go to our", "clan website", "https://embargo.gg/"));
-        actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Report a bug or", "inspect the plugin code", "https://github.com/Sharpienero/Embargo-Plugin"));
+        actionsContainer.add(buildLinkPanel(GITHUB_ICON, "Report a bug or", "inspect the plugin code",
+                "https://github.com/Sharpienero/Embargo-Plugin"));
 
         return actionsContainer;
     }
 
     void setupMissingItemsPanel() {
         // Clear any existing content
-            missingRequirementsContainer.removeAll();
+        missingRequirementsContainer.removeAll();
         missingRequirementsPanel.removeAll();
 
         // Set up container styling
@@ -199,10 +203,10 @@ public class EmbargoPanel extends PluginPanel {
                 boolean isRegisteredWithClan = dataManager.isUserRegistered(username);
 
                 if (isRegisteredWithClan) {
-                    //remove "Sign in to send..."
+                    // remove "Sign in to send..."
                     versionPanel.remove(emailLabel);
 
-                    //re-register labels with panel
+                    // re-register labels with panel
                     versionPanel.add(isRegisteredWithClanLabel);
                     versionPanel.add(embargoScoreLabel);
                     versionPanel.add(accountScoreLabel);
@@ -212,74 +216,90 @@ public class EmbargoPanel extends PluginPanel {
 
                     isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
 
-                    //get gear
-                    var embargoProfileData = dataManager.getProfile(username);
+                    // get gear asynchronously
+                    dataManager.getProfileAsync(username).thenAccept(embargoProfileData -> {
+                        // This code runs when the profile data is received
+                        // We need to run UI updates on the client thread
+                        clientThread.invokeLater(() -> {
+                            JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
+                            JsonElement currentCommunityPoints = embargoProfileData
+                                    .getAsJsonPrimitive("communityPoints");
 
-                    JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
+                            embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " +
+                                    (Integer.parseInt(String.valueOf(currentAccountPoints)) +
+                                            Integer.parseInt(String.valueOf(currentCommunityPoints))))));
 
-                    JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
-                    embargoScoreLabel.setText((htmlLabel("Embargo Score:", " " + (Integer.parseInt(String.valueOf(currentAccountPoints)) + Integer.parseInt(String.valueOf(currentCommunityPoints))))));
-                    JsonElement getCurrentCAName = embargoProfileData.get("currentHighestCAName");
-                    accountScoreLabel.setText(htmlLabel("Account Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
-                    communityScoreLabel.setText(htmlLabel("Community Score: ", String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
-                    JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
-                    JsonArray missingUntradableItemIdReqs = embargoProfileData
-                            .getAsJsonArray("missingUntradableItemIds");
+                            JsonElement getCurrentCAName = embargoProfileData.get("currentHighestCAName");
+                            accountScoreLabel.setText(htmlLabel("Account Score: ",
+                                    String.valueOf(Integer.parseInt(String.valueOf(currentAccountPoints)))));
 
-                    //JsonObject nextRank = embargoProfileData.getAsJsonObject("nextRank");
-                    JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
-                    JsonElement currentRankName = currentRank.get("name");
+                            communityScoreLabel.setText(htmlLabel("Community Score: ",
+                                    String.valueOf(Integer.parseInt(String.valueOf(currentCommunityPoints)))));
 
-                    var currentRankDisplay = String.valueOf(currentRankName).replace("\"", "");
-                    currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankDisplay));
+                            JsonArray missingGearReqs = embargoProfileData.getAsJsonArray("missingGearRequirements");
+                            JsonArray missingUntradableItemIdReqs = embargoProfileData
+                                    .getAsJsonArray("missingUntradableItemIds");
 
-                    var displayCAName = String.valueOf(getCurrentCAName).replace("\"", "");
-                    displayCAName = displayCAName.replace(" Combat Achievement", "");
+                            JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
+                            JsonElement currentRankName = currentRank.get("name");
 
-                    currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
+                            var currentRankDisplay = String.valueOf(currentRankName).replace("\"", "");
+                            currentRankLabel.setText(htmlLabel("Current Rank:", " " + currentRankDisplay));
 
-                    ArrayList<String> alreadyProcessed = new ArrayList<>();
+                            var displayCAName = String.valueOf(getCurrentCAName).replace("\"", "");
+                            displayCAName = displayCAName.replace(" Combat Achievement", "");
 
-                    //Build out the missing requirements panel
-                    if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
-                        for (JsonElement mi : missingGearReqs) {
-                            alreadyProcessed.add(mi.getAsString());
-                            log.debug("Processing {} in missingGearReqs", mi.getAsString());
-                            clientThread.invokeLater(() ->
-                                    missingRequirementsPanelX.addMissingItem(String.valueOf(mi), missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
-                        }
+                            currentCALabel.setText(htmlLabel("Current CA Tier:", " " + displayCAName));
 
-                        for (JsonElement mu : missingUntradableItemIdReqs) {
-                            if (alreadyProcessed.contains(mu.getAsString())) {
-                                log.debug("{} already added, skipping missingUntradableItemIdReqs", mu.getAsString());
-                                continue;
+                            ArrayList<String> alreadyProcessed = new ArrayList<>();
+
+                            // Build out the missing requirements panel
+                            if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
+                                for (JsonElement mi : missingGearReqs) {
+                                    alreadyProcessed.add(mi.getAsString());
+                                    log.debug("Processing {} in missingGearReqs", mi.getAsString());
+                                    clientThread.invokeLater(
+                                            () -> missingRequirementsPanelX.addMissingItem(String.valueOf(mi),
+                                                    missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
+                                }
+
+                                for (JsonElement mu : missingUntradableItemIdReqs) {
+                                    if (alreadyProcessed.contains(mu.getAsString())) {
+                                        log.debug("{} already added, skipping missingUntradableItemIdReqs",
+                                                mu.getAsString());
+                                        continue;
+                                    }
+                                    missingRequirementsPanelX.addMissingItem("", mu.getAsInt());
+                                }
+
+                                // Clear the panel first
+                                missingRequirementsPanel.removeAll();
+
+                                // Add only the missingRequirementsPanelX (not the label)
+                                missingRequirementsPanel.add(missingRequirementsPanelX);
+
+                                // Refresh the panel
+                                missingRequirementsPanel.revalidate();
+                                missingRequirementsPanel.repaint();
+                            } else {
+                                missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
                             }
-                            missingRequirementsPanelX.addMissingItem("", mu.getAsInt());
-                        }
+                        });
+                    }).exceptionally(ex -> {
+                        log.error("Error fetching profile data", ex);
+                        return null;
+                    });
 
-                        // Clear the panel first
-                        missingRequirementsPanel.removeAll();
-
-                        // Add only the missingRequirementsPanelX (not the label)
-                        missingRequirementsPanel.add(missingRequirementsPanelX);
-
-                        // Refresh the panel
-                        missingRequirementsPanel.revalidate();
-                        missingRequirementsPanel.repaint();
-                    } else {
-                        missingRequiredItemsLabel.setText(htmlLabel("Missing Requirements: ", "None"));
-                    }
+                    this.isLoggedIn = true;
                 } else {
                     emailLabel.setText("Account not registered with Embargo");
                 }
-                this.isLoggedIn = true;
             }
-
         }
     }
 
     public void logOut() {
-       //log.debug("inside of logOut()");
+        // log.debug("inside of logOut()");
         this.isLoggedIn = false;
 
         // Update labels
@@ -288,7 +308,8 @@ public class EmbargoPanel extends PluginPanel {
         loggedLabel.setText("Not signed in");
 
         // Reset missing gear requirements
-        missingRequiredItemsLabel.setText(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
+        missingRequiredItemsLabel
+                .setText(htmlLabel("Sign in to see what requirements", " you are missing for rank up"));
         missingRequiredItemsLabel.setFont(smallFont);
         missingRequiredItemsLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         missingRequirementsPanelX.clearItems();
