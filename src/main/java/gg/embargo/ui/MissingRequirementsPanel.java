@@ -12,6 +12,8 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.http.api.item.ItemPrice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.swing.*;
@@ -21,11 +23,10 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -37,6 +38,7 @@ public class MissingRequirementsPanel extends PluginPanel {
     private static final int TOOLTIP_PADDING = 3;
     private static final Color HOVER_COLOR = ColorScheme.DARKER_GRAY_HOVER_COLOR;
     private static final Color NORMAL_COLOR = ColorScheme.DARKER_GRAY_COLOR;
+    private static final Logger log = LoggerFactory.getLogger(MissingRequirementsPanel.class);
 
     // Cache for item icons to avoid recreating them
     private final Map<Integer, BufferedImage> iconCache = new ConcurrentHashMap<>();
@@ -46,6 +48,24 @@ public class MissingRequirementsPanel extends PluginPanel {
     private final JPanel itemsContainer;
     private final List<MissingItem> missingItems = new ArrayList<>();
     private final MouseAdapter itemMouseAdapter = createMouseAdapter();
+    private final Object lock = new Object();
+
+    private enum DynamicItems {
+        ACCOUNT_POINTS("account points"),
+        EHB("EHB"),
+        COMMUNITY_POINTS("community points"),
+        TOTAL_LEVEL("total level");
+
+        private final String label;
+
+        DynamicItems(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
 
     @Inject
     public MissingRequirementsPanel(ItemManager itemManager) {
@@ -121,7 +141,14 @@ public class MissingRequirementsPanel extends PluginPanel {
         // Check if item already exists
         if (!cleanedName.isEmpty() && missingItems.stream()
                 .anyMatch(item -> Objects.equals(item.getItemName(), cleanedName))) {
-            log.debug("Item {} already exists, returning", cleanedName);
+            boolean didRefreshItem = refreshDynamicItems(itemName, EnumSet.of(
+                    DynamicItems.ACCOUNT_POINTS,
+                    DynamicItems.EHB,
+                    DynamicItems.TOTAL_LEVEL,
+                    DynamicItems.COMMUNITY_POINTS));
+            if (!didRefreshItem) {
+                log.debug("Item {} already exists, returning", cleanedName);
+            }
             return;
         }
 
@@ -141,9 +168,36 @@ public class MissingRequirementsPanel extends PluginPanel {
         } else {
             itemIcon = getItemIcon(finalItemId, cleanedName);
         }
-
         missingItems.add(new MissingItem(cleanedName, finalItemId, itemIcon));
         updatePanel();
+    }
+
+    public boolean refreshDynamicItems(String itemName, EnumSet<DynamicItems> dynamicItemsEnumSet) {
+        synchronized (lock) {
+            Iterator<MissingItem> iterator = missingItems.iterator();
+            MissingItem itemToRefresh = null;
+            while (iterator.hasNext()) {
+                MissingItem item = iterator.next();
+                if (item.itemName.equals(itemName.replaceAll("^\"|\"$", ""))) {
+                    boolean containsDynamicItemName = dynamicItemsEnumSet
+                            .stream()
+                            .map(DynamicItems::getLabel)
+                            .anyMatch(item.itemName::contains);
+                    if (containsDynamicItemName) {
+                        itemToRefresh = item;
+                        iterator.remove();
+                        log.debug("Dynanmic value {} refreshed", item.itemName);
+                    }
+                    break;
+                }
+            }
+            if (itemToRefresh != null) {
+                missingItems.add(itemToRefresh);
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
     @Getter
