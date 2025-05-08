@@ -1,7 +1,5 @@
 package gg.embargo.ui;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -26,9 +24,6 @@ import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 @Slf4j
 public class MissingRequirementsPanel extends PluginPanel {
@@ -38,7 +33,6 @@ public class MissingRequirementsPanel extends PluginPanel {
     private static final int TOOLTIP_PADDING = 3;
     private static final Color HOVER_COLOR = ColorScheme.DARKER_GRAY_HOVER_COLOR;
     private static final Color NORMAL_COLOR = ColorScheme.DARKER_GRAY_COLOR;
-    private static final Logger log = LoggerFactory.getLogger(MissingRequirementsPanel.class);
 
     // Cache for item icons to avoid recreating them
     private final Map<Integer, BufferedImage> iconCache = new ConcurrentHashMap<>();
@@ -50,6 +44,7 @@ public class MissingRequirementsPanel extends PluginPanel {
     private final MouseAdapter itemMouseAdapter = createMouseAdapter();
     private final Object lock = new Object();
 
+    @Getter
     private enum DynamicItems {
         ACCOUNT_POINTS("account points"),
         EHB("EHB"),
@@ -62,9 +57,6 @@ public class MissingRequirementsPanel extends PluginPanel {
             this.label = label;
         }
 
-        public String getLabel() {
-            return label;
-        }
     }
 
     @Inject
@@ -137,18 +129,29 @@ public class MissingRequirementsPanel extends PluginPanel {
             return;
         }
 
-        // Handle case where we have an itemName
-        // Check if item already exists
-        if (!cleanedName.isEmpty() && missingItems.stream()
-                .anyMatch(item -> Objects.equals(item.getItemName(), cleanedName))) {
-            boolean didRefreshItem = refreshDynamicItems(itemName, EnumSet.of(
-                    DynamicItems.ACCOUNT_POINTS,
-                    DynamicItems.EHB,
-                    DynamicItems.TOTAL_LEVEL,
-                    DynamicItems.COMMUNITY_POINTS));
-            if (!didRefreshItem) {
-                log.debug("Item {} already exists, returning", cleanedName);
+        // Check if this is a dynamic item that already exists by type, not exact name
+        boolean isDynamicItem = false;
+        EnumSet<DynamicItems> dynamicItemsSet = EnumSet.of(
+                DynamicItems.ACCOUNT_POINTS,
+                DynamicItems.EHB,
+                DynamicItems.TOTAL_LEVEL,
+                DynamicItems.COMMUNITY_POINTS);
+
+        for (DynamicItems dynamicItem : dynamicItemsSet) {
+            if (cleanedName.contains(dynamicItem.getLabel())) {
+                isDynamicItem = true;
+                boolean didRefreshItem = refreshDynamicItems(itemName, dynamicItemsSet);
+                if (didRefreshItem) {
+                    return; // Successfully refreshed the dynamic item
+                }
+                break;
             }
+        }
+
+        // If not a dynamic item, check for exact match as before
+        if (!isDynamicItem && !cleanedName.isEmpty() && missingItems.stream()
+                .anyMatch(item -> Objects.equals(item.getItemName(), cleanedName))) {
+            log.debug("Item {} already exists, returning", cleanedName);
             return;
         }
 
@@ -174,26 +177,35 @@ public class MissingRequirementsPanel extends PluginPanel {
 
     public boolean refreshDynamicItems(String itemName, EnumSet<DynamicItems> dynamicItemsEnumSet) {
         synchronized (lock) {
+            String cleanedItemName = itemName.replaceAll("^\"|\"$", "");
+            boolean itemRemoved = false;
+
+            // First, remove any existing items that match the dynamic type
             Iterator<MissingItem> iterator = missingItems.iterator();
-            MissingItem itemToRefresh = null;
             while (iterator.hasNext()) {
                 MissingItem item = iterator.next();
-                if (item.itemName.contains(itemName.replaceAll("^\"|\"$", ""))) {
-                    boolean containsDynamicItemName = dynamicItemsEnumSet
-                            .stream()
-                            .map(DynamicItems::getLabel)
-                            .anyMatch(item.itemName::contains);
-                    if (containsDynamicItemName) {
-                        itemToRefresh = item;
+
+                // Check if this existing item matches any of our dynamic types
+                for (DynamicItems dynamicItem : dynamicItemsEnumSet) {
+                    if (item.itemName.contains(dynamicItem.getLabel()) &&
+                            cleanedItemName.contains(dynamicItem.getLabel())) {
+                        // Found a match - remove the old item
                         iterator.remove();
-                        log.debug("index of item {}", missingItems.indexOf(item));
-                        log.debug("Dynanmic value {} refreshed", item.itemName);
+                        itemRemoved = true;
+                        log.debug("Removed dynamic item {} to be replaced with {}",
+                                item.itemName, cleanedItemName);
+                        break;
                     }
-                    break;
                 }
             }
-            if (itemToRefresh != null) {
-                missingItems.add(itemToRefresh);
+
+            // Now add the new item if we removed an old one
+            if (itemRemoved) {
+                // Add the new item with updated value
+                missingItems.add(new MissingItem(cleanedItemName, -1,
+                        getItemIcon(-1, cleanedItemName)));
+                log.debug("Added new dynamic item: {}", cleanedItemName);
+                updatePanel(); // Make sure to update the panel to reflect changes
                 return true;
             } else {
                 return false;
