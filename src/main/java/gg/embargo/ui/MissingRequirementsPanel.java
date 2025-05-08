@@ -107,72 +107,75 @@ public class MissingRequirementsPanel extends PluginPanel {
      * @param itemId   The item ID in RuneScape
      */
     public void addMissingItem(String itemName, int itemId) {
-        // Clean up the item name
-        String cleanedName = itemName.replace("\"", "").replace(" (uncharged)", "");
+        synchronized (lock) {
+            // Clean up the item name
+            String cleanedName = itemName.replace("\"", "").replace(" (uncharged)", "");
 
-        // Handle case where itemName is empty but we have an itemId
-        if (itemName.isEmpty() && itemId != -1) {
-            ItemComposition ic = itemManager.getItemComposition(itemId);
-            String itemNameFromId = ic.getName();
+            // Handle case where itemName is empty but we have an itemId
+            if (itemName.isEmpty() && itemId != -1) {
+                ItemComposition ic = itemManager.getItemComposition(itemId);
+                String itemNameFromId = ic.getName();
 
-            // Check if this item already exists in our list
-            if (missingItems.stream().anyMatch(item -> Objects.equals(item.getItemName(), itemNameFromId))) {
-                log.debug("Item {} already exists, skipping", itemNameFromId);
+                // Check if this item already exists in our list
+                if (missingItems.stream().anyMatch(item -> Objects.equals(item.getItemName(), itemNameFromId))) {
+                    log.debug("Item {} already exists, skipping", itemNameFromId);
+                    return;
+                }
+
+                // Add the item with name from ItemComposition
+                BufferedImage itemIcon = getItemIcon(itemId, itemNameFromId);
+                log.debug("Adding untrackable item: {}", itemNameFromId);
+                missingItems.add(new MissingItem(itemNameFromId, itemId, itemIcon));
+                updatePanel();
                 return;
             }
 
-            // Add the item with name from ItemComposition
-            BufferedImage itemIcon = getItemIcon(itemId, itemNameFromId);
-            log.debug("Adding untrackable item: {}", itemNameFromId);
-            missingItems.add(new MissingItem(itemNameFromId, itemId, itemIcon));
-            updatePanel();
-            return;
-        }
+            // Check if this is a dynamic item that already exists by type, not exact name
+            boolean isDynamicItem = false;
+            EnumSet<DynamicItems> dynamicItemsSet = EnumSet.of(
+                    DynamicItems.ACCOUNT_POINTS,
+                    DynamicItems.EHB,
+                    DynamicItems.TOTAL_LEVEL,
+                    DynamicItems.COMMUNITY_POINTS);
 
-        // Check if this is a dynamic item that already exists by type, not exact name
-        boolean isDynamicItem = false;
-        EnumSet<DynamicItems> dynamicItemsSet = EnumSet.of(
-                DynamicItems.ACCOUNT_POINTS,
-                DynamicItems.EHB,
-                DynamicItems.TOTAL_LEVEL,
-                DynamicItems.COMMUNITY_POINTS);
-
-        for (DynamicItems dynamicItem : dynamicItemsSet) {
-            if (cleanedName.contains(dynamicItem.getLabel())) {
-                isDynamicItem = true;
-                boolean didRefreshItem = refreshDynamicItems(itemName, dynamicItemsSet);
-                if (didRefreshItem) {
-                    return; // Successfully refreshed the dynamic item
+            for (DynamicItems dynamicItem : dynamicItemsSet) {
+                if (cleanedName.contains(dynamicItem.getLabel())) {
+                    isDynamicItem = true;
+                    boolean didRefreshItem = refreshDynamicItems(itemName, dynamicItemsSet);
+                    if (didRefreshItem) {
+                        return; // Successfully refreshed the dynamic item
+                    }
+                    break;
                 }
-                break;
             }
-        }
 
-        // If not a dynamic item, check for exact match as before
-        if (!isDynamicItem && !cleanedName.isEmpty() && missingItems.stream()
-                .anyMatch(item -> Objects.equals(item.getItemName(), cleanedName))) {
-            log.debug("Item {} already exists, returning", cleanedName);
-            return;
-        }
+            // If not a dynamic item, check for exact match as before
+            if (!isDynamicItem && !cleanedName.isEmpty() && missingItems.stream()
+                    .anyMatch(item -> Objects.equals(item.getItemName(), cleanedName))) {
+                log.debug("Item {} already exists, returning", cleanedName);
+                return;
+            }
 
-        // Handle special cases for specific items
-        int finalItemId = itemId;
-        if (cleanedName.toLowerCase().contains("quiver")) {
-            finalItemId = 28947;
-        } else if (cleanedName.toLowerCase().contains("infernal cape")) {
-            finalItemId = 21295;
-        }
+            // Handle special cases for specific items
+            int finalItemId = itemId;
+            if (cleanedName.toLowerCase().contains("quiver")) {
+                finalItemId = 28947;
+            } else if (cleanedName.toLowerCase().contains("infernal cape")) {
+                finalItemId = 21295;
+            }
 
-        // Process the item and add it to the panel
-        BufferedImage itemIcon;
-        if (itemName.contains("Combat Achievement")) {
-            finalItemId = getHiltIdFromName(itemName);
-            itemIcon = getHiltImageFromName(itemName.split(" ")[0]);
-        } else {
-            itemIcon = getItemIcon(finalItemId, cleanedName);
+            // Process the item and add it to the panel
+            BufferedImage itemIcon;
+            if (itemName.contains("Combat Achievement")) {
+                finalItemId = getHiltIdFromName(itemName);
+                itemIcon = getHiltImageFromName(itemName.split(" ")[0]);
+            } else {
+                itemIcon = getItemIcon(finalItemId, cleanedName);
+            }
+            missingItems.add(new MissingItem(cleanedName, finalItemId, itemIcon));
+            log.debug("Added new item to panel: {}", cleanedName);
+            updatePanel();
         }
-        missingItems.add(new MissingItem(cleanedName, finalItemId, itemIcon));
-        updatePanel();
     }
 
     public boolean refreshDynamicItems(String itemName, EnumSet<DynamicItems> dynamicItemsEnumSet) {
@@ -269,21 +272,27 @@ public class MissingRequirementsPanel extends PluginPanel {
      * Clears all missing items from the panel
      */
     public void clearItems() {
-        missingItems.clear();
-        updatePanel();
+        synchronized (lock) {
+            log.debug("Clearing all items from panel. Stack trace:", new Exception("Stack trace"));
+            missingItems.clear();
+            updatePanel();
+        }
     }
 
     /**
      * Updates the panel with the current list of missing items
      */
     private void updatePanel() {
-        itemsContainer.removeAll();
-        for (MissingItem item : missingItems) {
-            JPanel itemPanel = createItemPanel(item);
-            itemsContainer.add(itemPanel);
+        synchronized (lock) {
+            log.debug("Updating panel with {} items", missingItems.size());
+            itemsContainer.removeAll();
+            for (MissingItem item : missingItems) {
+                JPanel itemPanel = createItemPanel(item);
+                itemsContainer.add(itemPanel);
+            }
+            revalidate();
+            repaint();
         }
-        revalidate();
-        repaint();
     }
 
     /**
