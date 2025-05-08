@@ -209,8 +209,8 @@ public class EmbargoPanel extends PluginPanel {
         if (!isLoggedIn || scheduled) {
             if (client != null && client.getLocalPlayer() != null) {
                 this.isLoggedIn = true;
-                //var username = client.getLocalPlayer().getName();
-                var username = "Catvish";
+                var username = client.getLocalPlayer().getName();
+
                 loggedLabel.setText(htmlLabel("Signed in as ", " " + username));
 
 
