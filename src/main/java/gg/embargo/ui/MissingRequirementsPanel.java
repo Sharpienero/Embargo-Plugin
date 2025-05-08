@@ -178,7 +178,7 @@ public class MissingRequirementsPanel extends PluginPanel {
             MissingItem itemToRefresh = null;
             while (iterator.hasNext()) {
                 MissingItem item = iterator.next();
-                if (item.itemName.equals(itemName.replaceAll("^\"|\"$", ""))) {
+                if (item.itemName.contains(itemName.replaceAll("^\"|\"$", ""))) {
                     boolean containsDynamicItemName = dynamicItemsEnumSet
                             .stream()
                             .map(DynamicItems::getLabel)
@@ -186,6 +186,7 @@ public class MissingRequirementsPanel extends PluginPanel {
                     if (containsDynamicItemName) {
                         itemToRefresh = item;
                         iterator.remove();
+                        log.debug("index of item {}", missingItems.indexOf(item));
                         log.debug("Dynanmic value {} refreshed", item.itemName);
                     }
                     break;
