@@ -273,7 +273,6 @@ public class MissingRequirementsPanel extends PluginPanel {
      */
     public void clearItems() {
         synchronized (lock) {
-            log.debug("Clearing all items from panel. Stack trace:", new Exception("Stack trace"));
             missingItems.clear();
             updatePanel();
         }
@@ -284,7 +283,6 @@ public class MissingRequirementsPanel extends PluginPanel {
      */
     private void updatePanel() {
         synchronized (lock) {
-            log.debug("Updating panel with {} items", missingItems.size());
             itemsContainer.removeAll();
             for (MissingItem item : missingItems) {
                 JPanel itemPanel = createItemPanel(item);
