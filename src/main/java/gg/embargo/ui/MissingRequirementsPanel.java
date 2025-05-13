@@ -37,6 +37,7 @@ public class MissingRequirementsPanel extends PluginPanel {
     // Cache for item icons to avoid recreating them
     private final Map<Integer, BufferedImage> iconCache = new ConcurrentHashMap<>();
     private final Map<String, BufferedImage> letterIconCache = new ConcurrentHashMap<>();
+    private volatile boolean isUpdating = false;
 
     private final ItemManager itemManager;
     private final JPanel itemsContainer;
@@ -273,8 +274,11 @@ public class MissingRequirementsPanel extends PluginPanel {
      */
     public void clearItems() {
         synchronized (lock) {
-            missingItems.clear();
-            updatePanel();
+
+            if (!missingItems.isEmpty()) {
+                missingItems.clear();
+                updatePanel();
+            }
         }
     }
 
@@ -282,14 +286,26 @@ public class MissingRequirementsPanel extends PluginPanel {
      * Updates the panel with the current list of missing items
      */
     private void updatePanel() {
-        synchronized (lock) {
-            itemsContainer.removeAll();
-            for (MissingItem item : missingItems) {
-                JPanel itemPanel = createItemPanel(item);
-                itemsContainer.add(itemPanel);
-            }
-            revalidate();
-            repaint();
+
+        if (isUpdating) {
+            return; // Prevent concurrent updates
+        }
+
+        try {
+            isUpdating = true;
+            SwingUtilities.invokeLater(() -> {
+                synchronized (lock) {
+                    itemsContainer.removeAll();
+                    for (MissingItem item : missingItems) {
+                        JPanel itemPanel = createItemPanel(item);
+                        itemsContainer.add(itemPanel);
+                    }
+                    revalidate();
+                    repaint();
+                }
+            });
+        } finally {
+            isUpdating = false;
         }
     }
 
