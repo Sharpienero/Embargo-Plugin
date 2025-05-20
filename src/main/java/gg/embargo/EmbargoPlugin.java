@@ -60,7 +60,6 @@ public class EmbargoPlugin extends Plugin {
 	private static final int SECONDS_BETWEEN_UPLOADS = 30;
 	private static final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
 	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
-	private static final Logger log = LoggerFactory.getLogger(EmbargoPlugin.class);
 
 	@Inject
 	private DataManager dataManager;
@@ -408,7 +407,6 @@ public class EmbargoPlugin extends Plugin {
 	}
 
 	public void processEmbargoLookupChatCommand(ChatMessage chatMessage, String message) {
-		log.debug("!Embargo called. Here is chatMessage: {}", chatMessage);
 		int firstWhitespace = message.indexOf(' ');
 		String memberName = "";
 
@@ -425,7 +423,7 @@ public class EmbargoPlugin extends Plugin {
 		chatMessage.getMessageNode().setRuneLiteFormatMessage(loadingMessage);
 
 		String finalMemberName = memberName;
-		dataManager.getProfileAsync(memberName.trim()).thenAccept(embargoProfileData -> {
+		dataManager.getProfileAsync(finalMemberName.trim()).thenAccept(embargoProfileData -> {
 			JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
 			JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
 			JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
@@ -476,6 +474,15 @@ public class EmbargoPlugin extends Plugin {
 					.append(String.valueOf(currentCommunityPoints))
 					.build();
 			chatMessage.getMessageNode().setRuneLiteFormatMessage(outputMessage);
+			client.refreshChat();
+		}).exceptionally(ex -> {
+			String memberNotFound = new ChatMessageBuilder()
+					.append(ChatColorType.HIGHLIGHT)
+					.append("Member " + finalMemberName + " not found.")
+					.build();
+			chatMessage.getMessageNode().setRuneLiteFormatMessage(memberNotFound);
+			client.refreshChat();
+			return null;
 		});
 	}
 
