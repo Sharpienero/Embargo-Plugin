@@ -474,9 +474,6 @@ public class EmbargoPlugin extends Plugin {
 					.append(" Community Points: ")
 					.append(ChatColorType.NORMAL)
 					.append(String.valueOf(currentCommunityPoints))
-					.append(ChatColorType.HIGHLIGHT)
-					.append(" Leaderboard Position: ")
-					.append(leaderboardPosition)
 					.build();
 			chatMessage.getMessageNode().setRuneLiteFormatMessage(outputMessage);
 		});
