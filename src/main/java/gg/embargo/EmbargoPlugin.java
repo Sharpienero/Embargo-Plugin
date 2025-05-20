@@ -1,5 +1,7 @@
 package gg.embargo;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.eastereggs.NPCRenameManager;
@@ -15,10 +17,13 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
@@ -28,9 +33,12 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.swing.*;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -52,6 +60,7 @@ public class EmbargoPlugin extends Plugin {
 	private static final int SECONDS_BETWEEN_UPLOADS = 30;
 	private static final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
 	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
+	private static final Logger log = LoggerFactory.getLogger(EmbargoPlugin.class);
 
 	@Inject
 	private DataManager dataManager;
@@ -361,6 +370,10 @@ public class EmbargoPlugin extends Plugin {
 		if (player == null) return;
 
 		String message = chatMessage.getMessage();
+
+		if (message.startsWith("!Embargo")) {
+			processEmbargoLookupChatCommand(chatMessage, message);
+		}
 		ChatMessageType messageType = chatMessage.getType();
 		RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
 		
@@ -391,6 +404,43 @@ public class EmbargoPlugin extends Plugin {
 
 			processCompletionMessages(manifestManager.getLatestManifest().minigameCompletionMessages, message,
 					(name, _message) -> dataManager.uploadMinigameCompletion(name, _message));
+		}
+	}
+
+	public void  processEmbargoLookupChatCommand(ChatMessage chatMessage, String message) {
+		log.debug("!Embargo called. Here is chatMessage: {}", chatMessage);
+		int firstWhitespace = message.indexOf(' ');
+
+		if (firstWhitespace != -1 && firstWhitespace + 1 < message.length()) {
+			String memberName = message.substring(firstWhitespace + 1);
+			chatMessage.getMessageNode().setRuneLiteFormatMessage("Looking up Embargo member...");
+			dataManager.getProfileAsync(memberName.trim().toLowerCase()).thenAccept(embargoProfileData -> {
+				JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
+				JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
+				JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
+				JsonElement currentRankName = currentRank.get("name");
+
+				String outputMessage = new ChatMessageBuilder()
+						.append(Color.red ,"Member: ")
+						.append(ChatColorType.NORMAL)
+						.append(memberName)
+						.append(ChatColorType.HIGHLIGHT)
+						.append(" Rank: ")
+						.append(Color.ORANGE, String.valueOf(currentRankName).replaceAll("^\"|\"$", ""))
+						.append(ChatColorType.HIGHLIGHT)
+						.append(" Account Points: ")
+						.append(ChatColorType.NORMAL)
+						.append(String.valueOf(currentAccountPoints))
+						.append(ChatColorType.HIGHLIGHT)
+						.append(" Community Points: ")
+						.append(ChatColorType.NORMAL)
+						.append(String.valueOf(currentCommunityPoints))
+						.build();
+				chatMessage.getMessageNode().setRuneLiteFormatMessage(outputMessage);
+			});
+
+		} else {
+			log.debug("!Embargo account lookup called on self, member: {}", chatMessage.getName().replaceAll("<[^>]*>", ""));
 		}
 	}
 
