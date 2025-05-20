@@ -92,7 +92,7 @@ public class CommandManager {
                     || embargoProfileData.getAsJsonObject("currentRank").get("name") == null) {
                 String memberNotFound = new ChatMessageBuilder()
                         .append(ChatColorType.HIGHLIGHT)
-                        .append("Embargo: " + finalMemberName + " not found.")
+                        .append("Member " + finalMemberName + " not found.")
                         .build();
                 updateChatMessage(chatMessage, memberNotFound);
                 return;
