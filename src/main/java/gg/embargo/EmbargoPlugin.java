@@ -127,7 +127,7 @@ public class EmbargoPlugin extends Plugin {
 
 		initializePanel();
 		initializeManagers();
-		
+
 		lastProfile = null;
 		dataManager.resetVarbsAndVarpsToCheck();
 		skillLevelCache.clear();
@@ -150,7 +150,7 @@ public class EmbargoPlugin extends Plugin {
 		embargoPanel = injector.getInstance(EmbargoPanel.class);
 		embargoPanel.init();
 		embargoPanel.updateLoggedIn(false);
-		
+
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
 		navButton = NavigationButton.builder()
 				.tooltip("Embargo Clan")
@@ -161,7 +161,7 @@ public class EmbargoPlugin extends Plugin {
 
 		clientToolbar.addNavigation(navButton);
 	}
-	
+
 	private void initializeManagers() {
 		if (config != null && config.showCollectionLogSyncButton()) {
 			syncButtonManager.startUp();
@@ -185,17 +185,17 @@ public class EmbargoPlugin extends Plugin {
 	@Override
 	protected void shutDown() {
 		log.info("Embargo Clan plugin stopped!");
-		
+
 		dataManager.clearData();
 		embargoPanel.reset();
 		clientToolbar.removeNavigation(navButton);
-		
+
 		shutDownManagers();
 
 		embargoPanel = null;
 		navButton = null;
 	}
-	
+
 	private void shutDownManagers() {
 		noticeBoardManager.shutDown();
 		clogManager.shutDown();
@@ -210,7 +210,7 @@ public class EmbargoPlugin extends Plugin {
 	public void onGameStateChanged(GameStateChanged event) {
 		GameState gameState = event.getGameState();
 		if (gameState == GameState.LOADING) return;
-		
+
 		if (gameState == GameState.LOGGED_IN && !embargoPanel.isLoggedIn) {
 			log.debug("inside of condition, handling loggedIn");
 			handleLoggedIn();
@@ -218,7 +218,7 @@ public class EmbargoPlugin extends Plugin {
 			handleLoggedOut();
 		}
 	}
-	
+
 	private void handleLoggedIn() {
 		clientThread.invokeLater(() -> {
 			if (client == null || dataManager.stopTryingForAccount.get()) {
@@ -244,26 +244,26 @@ public class EmbargoPlugin extends Plugin {
 			return isUsernameRegistered.get();
 		});
 	}
-	
+
 	private void handleLoggedOut() {
 		log.debug("User logged out");
-    
+
 		// Clear both panel references
 		if (embargoPanel != null) {
 			SwingUtilities.invokeLater(() -> embargoPanel.logOut());
 		} else {
 			log.debug("embargoPanel is null!!!");
 		}
-    
+
 		// Also clear the panel reference (which is different from embargoPanel)
 		if (embargoPanel != null) {
 			embargoPanel.reset();
 			embargoPanel.updateLoggedIn(false);
 		}
-    
+
 		// Clear data in DataManager to ensure complete reset
 		dataManager.clearData();
-    
+
 		// Reset skill cache
 		skillLevelCache.clear();
 	}
@@ -290,7 +290,7 @@ public class EmbargoPlugin extends Plugin {
 		if (client == null) {
 			return;
 		}
-		
+
 		GameState gameState = client.getGameState();
 		if (gameState != GameState.HOPPING && gameState != GameState.LOGIN_SCREEN) {
 			dataManager.submitToAPI();
@@ -300,7 +300,7 @@ public class EmbargoPlugin extends Plugin {
 			embargoPanel.logOut();
 		}
 	}
-	
+
 	private void updatePlayerRegistrationStatus() {
 		if (dataManager.stopTryingForAccount.get()) {
 			return;
@@ -318,9 +318,9 @@ public class EmbargoPlugin extends Plugin {
 	}
 
 	@Schedule(
-		period = SECONDS_BETWEEN_PROFILE_UPDATES,
-		unit = ChronoUnit.SECONDS,
-		asynchronous = true
+			period = SECONDS_BETWEEN_PROFILE_UPDATES,
+			unit = ChronoUnit.SECONDS,
+			asynchronous = true
 	)
 	public void checkProfileChanged() {
 		Player localPlayer = client.getLocalPlayer();
@@ -376,12 +376,12 @@ public class EmbargoPlugin extends Plugin {
 		}
 		ChatMessageType messageType = chatMessage.getType();
 		RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
-		
+
 		// Only process for standard profile
 		if (profileType != RuneScapeProfileType.STANDARD) {
 			return;
 		}
-		
+
 		// Check for collection log items
 		if (messageType == ChatMessageType.GAMEMESSAGE) {
 			Matcher matcher = COLLECTION_LOG_ITEM_REGEX.matcher(message);
@@ -390,11 +390,11 @@ public class EmbargoPlugin extends Plugin {
 				dataManager.uploadCollectionLogUnlock(obtainedItemName, player.getName());
 			}
 		}
-		
+
 		// Check for activity completions
-		if (messageType == ChatMessageType.GAMEMESSAGE || 
-			messageType == ChatMessageType.FRIENDSCHATNOTIFICATION || 
-			messageType == ChatMessageType.SPAM) {
+		if (messageType == ChatMessageType.GAMEMESSAGE ||
+				messageType == ChatMessageType.FRIENDSCHATNOTIFICATION ||
+				messageType == ChatMessageType.SPAM) {
 
 			if (processCompletionMessages(manifestManager.getLatestManifest().getRaidCompletionMessages(), message,
 					(name, _message) -> dataManager.uploadRaidCompletion(name, _message))) {
@@ -407,41 +407,79 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	public void  processEmbargoLookupChatCommand(ChatMessage chatMessage, String message) {
+	public void processEmbargoLookupChatCommand(ChatMessage chatMessage, String message) {
 		log.debug("!Embargo called. Here is chatMessage: {}", chatMessage);
 		int firstWhitespace = message.indexOf(' ');
+		String memberName = "";
 
 		if (firstWhitespace != -1 && firstWhitespace + 1 < message.length()) {
-			String memberName = message.substring(firstWhitespace + 1);
-			chatMessage.getMessageNode().setRuneLiteFormatMessage("Looking up Embargo member...");
-			dataManager.getProfileAsync(memberName.trim().toLowerCase()).thenAccept(embargoProfileData -> {
-				JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
-				JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
-				JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
-				JsonElement currentRankName = currentRank.get("name");
-
-				String outputMessage = new ChatMessageBuilder()
-						.append(Color.red ,"Member: ")
-						.append(ChatColorType.NORMAL)
-						.append(memberName)
-						.append(ChatColorType.HIGHLIGHT)
-						.append(" Rank: ")
-						.append(Color.ORANGE, String.valueOf(currentRankName).replaceAll("^\"|\"$", ""))
-						.append(ChatColorType.HIGHLIGHT)
-						.append(" Account Points: ")
-						.append(ChatColorType.NORMAL)
-						.append(String.valueOf(currentAccountPoints))
-						.append(ChatColorType.HIGHLIGHT)
-						.append(" Community Points: ")
-						.append(ChatColorType.NORMAL)
-						.append(String.valueOf(currentCommunityPoints))
-						.build();
-				chatMessage.getMessageNode().setRuneLiteFormatMessage(outputMessage);
-			});
-
+			memberName = message.substring(firstWhitespace + 1);
 		} else {
-			log.debug("!Embargo account lookup called on self, member: {}", chatMessage.getName().replaceAll("<[^>]*>", ""));
+			memberName = chatMessage.getName().replaceAll("<[^>]*>", "");
 		}
+
+		String loadingMessage = new ChatMessageBuilder()
+				.append(ChatColorType.HIGHLIGHT)
+				.append("Looking up Embargo member...")
+				.build();
+		chatMessage.getMessageNode().setRuneLiteFormatMessage(loadingMessage);
+
+		String finalMemberName = memberName;
+		dataManager.getProfileAsync(memberName.trim()).thenAccept(embargoProfileData -> {
+			JsonElement currentAccountPoints = embargoProfileData.get("accountPoints");
+			JsonElement currentCommunityPoints = embargoProfileData.getAsJsonPrimitive("communityPoints");
+			JsonObject currentRank = embargoProfileData.getAsJsonObject("currentRank");
+			JsonElement currentRankName = currentRank.get("name");
+			Color rankColor = null;
+
+			switch (String.valueOf(currentRankName).replaceAll("^\"|\"$", "")) {
+				case "Bronze":
+					rankColor = Color.orange;
+					break;
+				case "Iron":
+					rankColor = Color.darkGray;
+					break;
+				case "Steel":
+					rankColor = Color.lightGray;
+					break;
+				case "Mithril":
+					rankColor = Color.blue;
+					break;
+				case "Adamant":
+					rankColor = Color.green;
+					break;
+				case "Rune":
+					rankColor = Color.cyan;
+					break;
+				case "Dragon":
+					rankColor = Color.red;
+					break;
+				case "Beast":
+					rankColor = Color.yellow;
+					break;
+			}
+
+			String outputMessage = new ChatMessageBuilder()
+					.append(Color.RED, "Member: ")
+					.append(ChatColorType.NORMAL)
+					.append(finalMemberName)
+					.append(ChatColorType.HIGHLIGHT)
+					.append(" Rank: ")
+					.append(rankColor, String.valueOf(currentRankName).replaceAll("^\"|\"$", ""))
+					.append(ChatColorType.HIGHLIGHT)
+					.append(" Account Points: ")
+					.append(ChatColorType.NORMAL)
+					.append(String.valueOf(currentAccountPoints))
+					.append(ChatColorType.HIGHLIGHT)
+					.append(" Community Points: ")
+					.append(ChatColorType.NORMAL)
+					.append(String.valueOf(currentCommunityPoints))
+					.append(ChatColorType.HIGHLIGHT)
+					.append(" Leaderboard Position: ")
+					.append(leaderboardPosition)
+					.build();
+			chatMessage.getMessageNode().setRuneLiteFormatMessage(outputMessage);
+		});
 	}
 
 	private boolean processCompletionMessages(Map<String, String> messageMap, String chatMessage, 
