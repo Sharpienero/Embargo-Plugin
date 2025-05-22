@@ -83,13 +83,12 @@ public class CommandManager {
         updateChatMessage(chatMessage, loadingMessage);
 
         String finalMemberName = memberName.trim();
-        dataManager.getProfileAsync(finalMemberName).thenAccept(embargoProfileData -> {
+        dataManager.getProfileAsync(finalMemberName, true).thenAccept(embargoProfileData -> {
             // Null checks for safety
             if (embargoProfileData == null
                     || embargoProfileData.get("accountPoints") == null
                     || embargoProfileData.getAsJsonPrimitive("communityPoints") == null
-                    || embargoProfileData.getAsJsonObject("currentRank") == null
-                    || embargoProfileData.getAsJsonObject("currentRank").get("name") == null) {
+                    || embargoProfileData.getAsJsonPrimitive("currentRank") == null) {
                 String memberNotFound = new ChatMessageBuilder()
                         .append(ChatColorType.HIGHLIGHT)
                         .append("Error retrieving member information for member: " + finalMemberName)
@@ -98,24 +97,27 @@ public class CommandManager {
                 return;
             }
 
-            String currentRankName = embargoProfileData.getAsJsonObject("currentRank").get("name").getAsString();
+            String currentRankName = embargoProfileData.getAsJsonPrimitive("currentRank").getAsString();
+            String leaderboardPosition = embargoProfileData.getAsJsonObject("leaderboardRank").get("currentPosition")
+                    + "/"
+                    + embargoProfileData.getAsJsonObject("leaderboardRank").get("totalPositions");
             Color rankColor = Rank.getColorByName(currentRankName);
+            Color labelColor = new Color(255,154,31);
 
             String outputMessage = new ChatMessageBuilder()
-                    .append(Color.RED, "Member: ")
-                    .append(ChatColorType.NORMAL)
+                    .append(labelColor, "Member: ")
                     .append(finalMemberName)
-                    .append(ChatColorType.HIGHLIGHT)
-                    .append(" Rank: ")
+                    .append(labelColor," Rank: ")
                     .append(rankColor, currentRankName)
+                    .append(labelColor," Account Points: ")
                     .append(ChatColorType.HIGHLIGHT)
-                    .append(" Account Points: ")
-                    .append(ChatColorType.NORMAL)
                     .append(String.valueOf(embargoProfileData.get("accountPoints")))
+                    .append(labelColor," Community Points: ")
                     .append(ChatColorType.HIGHLIGHT)
-                    .append(" Community Points: ")
-                    .append(ChatColorType.NORMAL)
                     .append(String.valueOf(embargoProfileData.getAsJsonPrimitive("communityPoints")))
+                    .append(labelColor," Leaderboard Rank: ")
+                    .append(ChatColorType.HIGHLIGHT)
+                    .append(leaderboardPosition)
                     .build();
 
             updateChatMessage(chatMessage, outputMessage);

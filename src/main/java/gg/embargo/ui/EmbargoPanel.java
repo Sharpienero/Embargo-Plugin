@@ -235,7 +235,7 @@ public class EmbargoPanel extends PluginPanel {
                 isRegisteredWithClanLabel.setText(htmlLabel("Account registered:", " Yes"));
 
                 // get gear asynchronously
-                dataManager.getProfileAsync(username).thenAccept(embargoProfileData -> {
+                dataManager.getProfileAsync(username, false).thenAccept(embargoProfileData -> {
                     // This code runs when the profile data is received
                     // We need to run UI updates on the client thread
                     clientThread.invokeLater(() -> {
