@@ -14,7 +14,6 @@ public interface EmbargoConfig extends Config
     )
     String noticeBoardSettings = "NoticeBoardSettings";
 
-
     @ConfigItem(
             keyName = "highlightClan",
             name = "Highlight Embargo Members",
@@ -121,6 +120,25 @@ public interface EmbargoConfig extends Config
     default int announcementVolume()
     {
         return 60;
+    }
+
+    @ConfigSection(
+            name = "Chat Commands",
+            description = "Section that houses Chat Command options",
+            position = 4
+    )
+    String chatCommandSettings = "ChatCommandSettings";
+
+    @ConfigItem(
+            keyName = "chatCommandOutputColor",
+            name = "Output Text Color",
+            description = "The color that highlighted text will be when using clan chat commands.",
+            position = 1,
+            section = chatCommandSettings
+    )
+    default Color chatCommandOutputColor()
+    {
+        return new Color(255, 116, 0);
     }
 
 }

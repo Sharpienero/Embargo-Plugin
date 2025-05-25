@@ -1,7 +1,5 @@
 package gg.embargo;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.commands.CommandManager;
@@ -18,13 +16,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.chat.ChatColorType;
-import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
@@ -34,8 +29,6 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.swing.*;

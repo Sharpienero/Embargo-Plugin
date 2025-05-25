@@ -3,6 +3,7 @@ package gg.embargo.commands;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import gg.embargo.DataManager;
+import gg.embargo.EmbargoConfig;
 import gg.embargo.commands.embargo.Rank;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -11,6 +12,7 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.config.Config;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -30,11 +32,14 @@ public class CommandManager {
 
     private final EventBus eventBus;
 
+    private EmbargoConfig config;
+
     @Inject
-    public CommandManager(Client client, ClientThread clientThread, EventBus eventBus) {
+    public CommandManager(Client client, ClientThread clientThread, EventBus eventBus, EmbargoConfig config) {
         this.client = client;
         this.clientThread = clientThread;
         this.eventBus = eventBus;
+        this.config = config;
     }
 
     public void startUp() {
@@ -57,7 +62,7 @@ public class CommandManager {
         String message = chatMessage.getMessage();
 
         if (message.toLowerCase().startsWith("!embargo")) {
-            processEmbargoLookupChatCommand(chatMessage, message);
+            processEmbargoLookupChatCommand(chatMessage, message, config);
         }
     }
 
@@ -69,7 +74,7 @@ public class CommandManager {
         });
     }
 
-    public void processEmbargoLookupChatCommand(ChatMessage chatMessage, String message) {
+    public void processEmbargoLookupChatCommand(ChatMessage chatMessage, String message, EmbargoConfig config) {
         int firstWhitespace = message.indexOf(' ');
         String memberName = (firstWhitespace != -1 && firstWhitespace + 1 < message.length())
                 ? message.substring(firstWhitespace + 1)
@@ -102,7 +107,7 @@ public class CommandManager {
                     + "/"
                     + embargoProfileData.getAsJsonObject("leaderboardRank").get("totalPositions");
             Color rankColor = Rank.getColorByName(currentRankName);
-            Color labelColor = new Color(255,154,31);
+            Color labelColor = config.chatCommandOutputColor();
 
             String outputMessage = new ChatMessageBuilder()
                     .append(labelColor, "Member: ")
