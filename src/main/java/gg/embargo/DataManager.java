@@ -116,7 +116,8 @@ public class DataManager {
         GET_RAID_MONSTERS_TO_TRACK_LOOT("lootBosses"),
         PREPARE_RAID("raid"),
         UPLOAD_CLOG("collectionlog"),
-        MINIGAME_COMPLETE("minigame");
+        MINIGAME_COMPLETE("minigame"),
+        GET_MEMBER_INFO("embargo-profile");
 
         APIRoutes(String route) {
             this.route = route;
@@ -142,6 +143,7 @@ public class DataManager {
     private static final String PREPARE_RAID_ENDPOINT = API_URI + APIRoutes.PREPARE_RAID;
     private static final String MINIGAME_COMPLETION_ENDPOINT = API_URI + APIRoutes.MINIGAME_COMPLETE;
     private static final String CLOG_UNLOCK_ENDPOINT = API_URI + APIRoutes.UPLOAD_CLOG;
+    private static final String GET_MEMBER_INFO_ENDPOINT = API_URI + APIRoutes.GET_MEMBER_INFO;
 
     public static ArrayList BossesToTrack = null;
 
@@ -337,13 +339,21 @@ public class DataManager {
         return payload;
     }
 
-    public CompletableFuture<JsonObject> getProfileAsync(String username) {
+    public CompletableFuture<JsonObject> getProfileAsync(String username, boolean isMemberInfoCall) {
         CompletableFuture<JsonObject> future = new CompletableFuture<>();
+        Request request = null;
 
-        Request request = new Request.Builder()
-                .url(GET_PROFILE_ENDPOINT + '/' + username)
-                .get()
-                .build();
+        if (isMemberInfoCall) {
+            request = new Request.Builder()
+                    .url(GET_MEMBER_INFO_ENDPOINT + '/' + username)
+                    .get()
+                    .build();
+        } else {
+            request = new Request.Builder()
+                    .url(GET_PROFILE_ENDPOINT + '/' + username)
+                    .get()
+                    .build();
+        }
 
         okHttpClient.newCall(request).enqueue(new Callback() {
             @Override

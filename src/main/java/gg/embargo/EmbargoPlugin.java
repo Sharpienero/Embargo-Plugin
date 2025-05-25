@@ -2,6 +2,7 @@ package gg.embargo;
 
 import com.google.inject.Provides;
 import gg.embargo.collections.*;
+import gg.embargo.commands.CommandManager;
 import gg.embargo.eastereggs.NPCRenameManager;
 import gg.embargo.eastereggs.SoundManager;
 import gg.embargo.manifest.ManifestManager;
@@ -31,6 +32,7 @@ import net.runelite.http.api.loottracker.LootRecordType;
 
 import javax.inject.Inject;
 import javax.swing.*;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -41,17 +43,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-@PluginDescriptor(
-	name = "Embargo Clan",
-	description = "A plugin to sync your account with Embargo",
-	tags = {"embargo", "clan", "embargo.gg", "ironman"}
-)
+@PluginDescriptor(name = "Embargo Clan", description = "A plugin to sync your account with Embargo", tags = { "embargo",
+		"clan", "embargo.gg", "ironman" })
 public class EmbargoPlugin extends Plugin {
 
 	private static final String CONFIG_GROUP = "embargo";
 	private static final int SECONDS_BETWEEN_UPLOADS = 30;
 	private static final int SECONDS_BETWEEN_PROFILE_UPDATES = 15;
-	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern.compile("New item added to your collection log: (.*)");
+	private static final Pattern COLLECTION_LOG_ITEM_REGEX = Pattern
+			.compile("New item added to your collection log: (.*)");
 
 	@Inject
 	private DataManager dataManager;
@@ -95,6 +95,9 @@ public class EmbargoPlugin extends Plugin {
 	@Inject
 	public ManifestManager manifestManager;
 
+	@Inject
+	public CommandManager commandManager;
+
 	private RuneScapeProfileType lastProfile;
 
 	private NavigationButton navButton;
@@ -118,7 +121,7 @@ public class EmbargoPlugin extends Plugin {
 
 		initializePanel();
 		initializeManagers();
-		
+
 		lastProfile = null;
 		dataManager.resetVarbsAndVarpsToCheck();
 		skillLevelCache.clear();
@@ -141,7 +144,7 @@ public class EmbargoPlugin extends Plugin {
 		embargoPanel = injector.getInstance(EmbargoPanel.class);
 		embargoPanel.init();
 		embargoPanel.updateLoggedIn(false);
-		
+
 		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/icon.png");
 		navButton = NavigationButton.builder()
 				.tooltip("Embargo Clan")
@@ -152,7 +155,7 @@ public class EmbargoPlugin extends Plugin {
 
 		clientToolbar.addNavigation(navButton);
 	}
-	
+
 	private void initializeManagers() {
 		if (config != null && config.showCollectionLogSyncButton()) {
 			syncButtonManager.startUp();
@@ -161,6 +164,7 @@ public class EmbargoPlugin extends Plugin {
 		clogManager.startUp(syncButtonManager);
 		untrackableItemManager.startUp();
 		noticeBoardManager.startUp();
+		commandManager.startUp();
 
 		if (config != null && config.highlightClan()) {
 			noticeBoardManager.setNoticeBoards();
@@ -176,17 +180,17 @@ public class EmbargoPlugin extends Plugin {
 	@Override
 	protected void shutDown() {
 		log.info("Embargo Clan plugin stopped!");
-		
+
 		dataManager.clearData();
 		embargoPanel.reset();
 		clientToolbar.removeNavigation(navButton);
-		
+
 		shutDownManagers();
 
 		embargoPanel = null;
 		navButton = null;
 	}
-	
+
 	private void shutDownManagers() {
 		noticeBoardManager.shutDown();
 		clogManager.shutDown();
@@ -195,13 +199,15 @@ public class EmbargoPlugin extends Plugin {
 		itemRenameManager.shutDown();
 		npcRenameManager.shutDown();
 		soundManager.shutDown();
+		commandManager.shutDown();
 	}
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event) {
 		GameState gameState = event.getGameState();
-		if (gameState == GameState.LOADING) return;
-		
+		if (gameState == GameState.LOADING)
+			return;
+
 		if (gameState == GameState.LOGGED_IN && !embargoPanel.isLoggedIn) {
 			log.debug("inside of condition, handling loggedIn");
 			handleLoggedIn();
@@ -209,7 +215,7 @@ public class EmbargoPlugin extends Plugin {
 			handleLoggedOut();
 		}
 	}
-	
+
 	private void handleLoggedIn() {
 		clientThread.invokeLater(() -> {
 			if (client == null || dataManager.stopTryingForAccount.get()) {
@@ -235,63 +241,56 @@ public class EmbargoPlugin extends Plugin {
 			return isUsernameRegistered.get();
 		});
 	}
-	
+
 	private void handleLoggedOut() {
 		log.debug("User logged out");
-    
+
 		// Clear both panel references
 		if (embargoPanel != null) {
 			SwingUtilities.invokeLater(() -> embargoPanel.logOut());
 		} else {
 			log.debug("embargoPanel is null!!!");
 		}
-    
+
 		// Also clear the panel reference (which is different from embargoPanel)
 		if (embargoPanel != null) {
 			embargoPanel.reset();
 			embargoPanel.updateLoggedIn(false);
 		}
-    
+
 		// Clear data in DataManager to ensure complete reset
 		dataManager.clearData();
-    
+
 		// Reset skill cache
 		skillLevelCache.clear();
 	}
 
-	@Schedule(
-			period = SECONDS_BETWEEN_UPLOADS,
-			unit = ChronoUnit.SECONDS,
-			asynchronous = true
-	)
+	@Schedule(period = SECONDS_BETWEEN_UPLOADS, unit = ChronoUnit.SECONDS, asynchronous = true)
 	public void ensureLatestManifest() {
 		if (manifestManager.getLatestManifest() != null) {
-			if (!(manifestManager.getLastCheckedManifestVersion() == manifestManager.getLatestManifest().getVersion())) {
+			if (!(manifestManager.getLastCheckedManifestVersion() == manifestManager.getLatestManifest()
+					.getVersion())) {
 				manifestManager.getLatestManifest();
 			}
 		}
 	}
 
-	@Schedule(
-			period = SECONDS_BETWEEN_UPLOADS,
-			unit = ChronoUnit.SECONDS,
-			asynchronous = true
-	)
+	@Schedule(period = SECONDS_BETWEEN_UPLOADS, unit = ChronoUnit.SECONDS, asynchronous = true)
 	public void submitToAPI() {
 		if (client == null) {
 			return;
 		}
-		
+
 		GameState gameState = client.getGameState();
 		if (gameState != GameState.HOPPING && gameState != GameState.LOGIN_SCREEN) {
 			dataManager.submitToAPI();
 			updatePlayerRegistrationStatus();
 		} else {
-			//log.debug("User is hopping or logged out, do not send data");
+			// log.debug("User is hopping or logged out, do not send data");
 			embargoPanel.logOut();
 		}
 	}
-	
+
 	private void updatePlayerRegistrationStatus() {
 		if (dataManager.stopTryingForAccount.get()) {
 			return;
@@ -308,11 +307,7 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	@Schedule(
-		period = SECONDS_BETWEEN_PROFILE_UPDATES,
-		unit = ChronoUnit.SECONDS,
-		asynchronous = true
-	)
+	@Schedule(period = SECONDS_BETWEEN_PROFILE_UPDATES, unit = ChronoUnit.SECONDS, asynchronous = true)
 	public void checkProfileChanged() {
 		Player localPlayer = client.getLocalPlayer();
 		if (localPlayer != null && client.getGameState() == GameState.LOGGED_IN) {
@@ -355,20 +350,23 @@ public class EmbargoPlugin extends Plugin {
 
 	@Subscribe
 	public void onChatMessage(ChatMessage chatMessage) {
-		if (client == null || manifestManager.getLatestManifest() == null) return;
+		if (client == null || manifestManager.getLatestManifest() == null)
+			return;
 
 		Player player = client.getLocalPlayer();
-		if (player == null) return;
+		if (player == null)
+			return;
 
 		String message = chatMessage.getMessage();
+
 		ChatMessageType messageType = chatMessage.getType();
 		RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
-		
+
 		// Only process for standard profile
 		if (profileType != RuneScapeProfileType.STANDARD) {
 			return;
 		}
-		
+
 		// Check for collection log items
 		if (messageType == ChatMessageType.GAMEMESSAGE) {
 			Matcher matcher = COLLECTION_LOG_ITEM_REGEX.matcher(message);
@@ -377,15 +375,16 @@ public class EmbargoPlugin extends Plugin {
 				dataManager.uploadCollectionLogUnlock(obtainedItemName, player.getName());
 			}
 		}
-		
+
 		// Check for activity completions
-		if (messageType == ChatMessageType.GAMEMESSAGE || 
-			messageType == ChatMessageType.FRIENDSCHATNOTIFICATION || 
-			messageType == ChatMessageType.SPAM) {
+		if (messageType == ChatMessageType.GAMEMESSAGE ||
+				messageType == ChatMessageType.FRIENDSCHATNOTIFICATION ||
+				messageType == ChatMessageType.SPAM) {
 
 			if (processCompletionMessages(manifestManager.getLatestManifest().getRaidCompletionMessages(), message,
 					(name, _message) -> dataManager.uploadRaidCompletion(name, _message))) {
-				//return early as it saves time in case it gets processed here, otherwise it's most likely a minigame completion message or unrelated
+				// return early as it saves time in case it gets processed here, otherwise it's
+				// most likely a minigame completion message or unrelated
 				return;
 			}
 
@@ -394,12 +393,12 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	private boolean processCompletionMessages(Map<String, String> messageMap, String chatMessage, 
-											 BiConsumer<String, String> uploadAction) {
+	private boolean processCompletionMessages(Map<String, String> messageMap, String chatMessage,
+			BiConsumer<String, String> uploadAction) {
 		for (Map.Entry<String, String> entry : messageMap.entrySet()) {
 			String name = entry.getKey();
 			String completionMessage = entry.getValue();
-			
+
 			if (chatMessage.contains(completionMessage)) {
 				log.debug("Sending API request for completed activity");
 				uploadAction.accept(name, chatMessage);
@@ -419,7 +418,7 @@ public class EmbargoPlugin extends Plugin {
 		boolean profileChanged = isStandardProfile && currentProfile != lastProfile;
 		boolean dataAvailable = dataManager.getVarbitsToCheck() != null && dataManager.getVarpsToCheck() != null;
 		boolean isLoggedIn = client.getGameState() == GameState.LOGGED_IN;
-		
+
 		if (profileChanged && dataAvailable && isLoggedIn) {
 			// Profile change, we should clear the dataManager and do a new initial dump
 			log.debug("Profile changed to standard. Reloading all data and updating profile");
@@ -435,11 +434,11 @@ public class EmbargoPlugin extends Plugin {
 		if (skill == null) {
 			return;
 		}
-		
+
 		String skillName = skill.getName();
 		int newLevel = statChanged.getLevel();
 		Integer cachedLevel = skillLevelCache.get(skillName);
-		
+
 		if (cachedLevel == null || cachedLevel != newLevel) {
 			skillLevelCache.put(skillName, newLevel);
 			dataManager.storeSkillChanged(skillName, newLevel);
@@ -481,7 +480,7 @@ public class EmbargoPlugin extends Plugin {
 		} else {
 			syncButtonManager.shutDown();
 		}
-		
+
 		// Handle item rename config changes
 		if (event.getKey().equals("enableClanEasterEggs")) {
 			if (config.enableClanEasterEggs()) {
@@ -493,6 +492,5 @@ public class EmbargoPlugin extends Plugin {
 			}
 		}
 	}
-
 
 }
