@@ -5,16 +5,12 @@ import gg.embargo.EmbargoConfig;
 import gg.embargo.commands.embargo.Rank;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.chatcommands.ChatKeyboardListener;
-import net.runelite.client.input.KeyManager;
 
 import javax.inject.Inject;
 import java.awt.*;
@@ -25,6 +21,9 @@ public class CommandManager {
     private ClientThread clientThread;
 
     @Inject
+    private EmbargoConfig config;
+
+    @Inject
     private Client client;
 
     @Inject
@@ -33,15 +32,7 @@ public class CommandManager {
     @Inject
     private ChatCommandManager chatCommandManager;
 
-    @Inject
-    private ChatKeyboardListener chatKeyboardListener;
-
-    @Inject
-    private KeyManager keyManager;
-
     private final EventBus eventBus;
-
-    private EmbargoConfig config;
 
     private static final String EMBARGO_COMMAND = "!embargo";
 
@@ -55,31 +46,12 @@ public class CommandManager {
 
     public void startUp() {
         eventBus.register(this);
-        keyManager.registerKeyListener(chatKeyboardListener);
         chatCommandManager.registerCommandAsync(EMBARGO_COMMAND, this::processEmbargoLookupChatCommand);
-
     }
 
     public void shutDown() {
         eventBus.unregister(this);
-        keyManager.unregisterKeyListener(chatKeyboardListener);
         chatCommandManager.unregisterCommand(EMBARGO_COMMAND);
-    }
-
-    @Subscribe
-    public void onChatMessage(ChatMessage chatMessage) {
-        if (client == null)
-            return;
-
-        Player player = client.getLocalPlayer();
-        if (player == null)
-            return;
-
-        String message = chatMessage.getMessage();
-
-        if (message.toLowerCase().startsWith("!embargo")) {
-            processEmbargoLookupChatCommand(chatMessage, message);
-        }
     }
 
     // Helper method to update chat message safely on the client thread
