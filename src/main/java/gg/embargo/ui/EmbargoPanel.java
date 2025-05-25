@@ -81,7 +81,7 @@ public class EmbargoPanel extends PluginPanel {
 
     void setupVersionPanel() {
         // Set up Embargo Clan Version at top of Version panel
-        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.5"));
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.6"));
         version.setFont(smallFont);
 
         // Set version's font
@@ -212,7 +212,6 @@ public class EmbargoPanel extends PluginPanel {
                 var username = client.getLocalPlayer().getName();
 
                 loggedLabel.setText(htmlLabel("Signed in as ", " " + username));
-
 
                 dataManager.isUserRegisteredAsync(username, isRegistered -> {
                     if (!isRegistered) {
