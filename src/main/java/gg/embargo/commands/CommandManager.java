@@ -1,7 +1,5 @@
 package gg.embargo.commands;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import gg.embargo.DataManager;
 import gg.embargo.EmbargoConfig;
 import gg.embargo.commands.embargo.Rank;
@@ -12,7 +10,6 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
-import net.runelite.client.config.Config;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -96,7 +93,7 @@ public class CommandManager {
                     || embargoProfileData.getAsJsonPrimitive("currentRank") == null) {
                 String memberNotFound = new ChatMessageBuilder()
                         .append(ChatColorType.HIGHLIGHT)
-                        .append("Error retrieving member information for member: " + finalMemberName)
+                        .append("Error retrieving data for member: " + finalMemberName)
                         .build();
                 updateChatMessage(chatMessage, memberNotFound);
                 return;
@@ -112,15 +109,15 @@ public class CommandManager {
             String outputMessage = new ChatMessageBuilder()
                     .append(labelColor, "Member: ")
                     .append(finalMemberName)
-                    .append(labelColor," Rank: ")
+                    .append(labelColor, " Rank: ")
                     .append(rankColor, currentRankName)
-                    .append(labelColor," Account Points: ")
+                    .append(labelColor, " Account Points: ")
                     .append(ChatColorType.HIGHLIGHT)
                     .append(String.valueOf(embargoProfileData.get("accountPoints")))
-                    .append(labelColor," Community Points: ")
+                    .append(labelColor, " Community Points: ")
                     .append(ChatColorType.HIGHLIGHT)
                     .append(String.valueOf(embargoProfileData.getAsJsonPrimitive("communityPoints")))
-                    .append(labelColor," Leaderboard Rank: ")
+                    .append(labelColor, " Leaderboard Rank: ")
                     .append(ChatColorType.HIGHLIGHT)
                     .append(leaderboardPosition)
                     .build();
