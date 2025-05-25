@@ -9,9 +9,12 @@ import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.plugins.chatcommands.ChatKeyboardListener;
+import net.runelite.client.input.KeyManager;
 
 import javax.inject.Inject;
 import java.awt.*;
@@ -27,9 +30,20 @@ public class CommandManager {
     @Inject
     private DataManager dataManager;
 
+    @Inject
+    private ChatCommandManager chatCommandManager;
+
+    @Inject
+    private ChatKeyboardListener chatKeyboardListener;
+
+    @Inject
+    private KeyManager keyManager;
+
     private final EventBus eventBus;
 
     private EmbargoConfig config;
+
+    private static final String EMBARGO_COMMAND = "!embargo";
 
     @Inject
     public CommandManager(Client client, ClientThread clientThread, EventBus eventBus, EmbargoConfig config) {
@@ -41,10 +55,15 @@ public class CommandManager {
 
     public void startUp() {
         eventBus.register(this);
+        keyManager.registerKeyListener(chatKeyboardListener);
+        chatCommandManager.registerCommandAsync(EMBARGO_COMMAND, this::processEmbargoLookupChatCommand);
+
     }
 
     public void shutDown() {
         eventBus.unregister(this);
+        keyManager.unregisterKeyListener(chatKeyboardListener);
+        chatCommandManager.unregisterCommand(EMBARGO_COMMAND);
     }
 
     @Subscribe
@@ -59,7 +78,7 @@ public class CommandManager {
         String message = chatMessage.getMessage();
 
         if (message.toLowerCase().startsWith("!embargo")) {
-            processEmbargoLookupChatCommand(chatMessage, message, config);
+            processEmbargoLookupChatCommand(chatMessage, message);
         }
     }
 
@@ -71,7 +90,7 @@ public class CommandManager {
         });
     }
 
-    public void processEmbargoLookupChatCommand(ChatMessage chatMessage, String message, EmbargoConfig config) {
+    public void processEmbargoLookupChatCommand(ChatMessage chatMessage, String message) {
         int firstWhitespace = message.indexOf(' ');
         String memberName = (firstWhitespace != -1 && firstWhitespace + 1 < message.length())
                 ? message.substring(firstWhitespace + 1)
