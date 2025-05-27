@@ -328,6 +328,9 @@ public class MissingRequirementsPanel extends PluginPanel {
             iconLabel.setIcon(getIconForItemId(dyn.itemIds[0]));
             dynamicPanel.add(iconLabel, BorderLayout.CENTER);
 
+            // Set initial tooltip
+            dynamicPanel.setToolTipText(dyn.names[0]);
+
             Timer timer = new Timer();
             timer.scheduleAtFixedRate(new TimerTask() {
                 int idx = 0;
@@ -336,7 +339,8 @@ public class MissingRequirementsPanel extends PluginPanel {
                 public void run() {
                     SwingUtilities.invokeLater(() -> {
                         idx = (idx + 1) % dyn.names.length;
-                        iconLabel.setIcon(getIconForItemId(dyn.itemIds[idx]));
+                        iconLabel.setIcon(new ImageIcon(dyn.icons.get(idx)));
+                        dynamicPanel.setToolTipText(dyn.names[idx]);
                         dynamicPanel.revalidate();
                         dynamicPanel.repaint();
                     });
@@ -551,8 +555,14 @@ public class MissingRequirementsPanel extends PluginPanel {
      */
     public void addDynamicMissingItem(String[] names, int[] itemIds, int intervalMs) {
         synchronized (lock) {
-            // Remove any existing DynamicMissingItem with the same names (ignoring order)
-            Set<String> newNamesSet = new HashSet<>(Arrays.asList(names));
+            // Clean all names like addMissingItem does
+            String[] cleanedNames = Arrays.stream(names)
+                    .map(n -> n.replace("\"", "").replace(" (uncharged)", ""))
+                    .toArray(String[]::new);
+
+            // Remove any existing DynamicMissingItem with the same cleaned names (ignoring
+            // order)
+            Set<String> newNamesSet = new HashSet<>(Arrays.asList(cleanedNames));
             Iterator<MissingItem> iterator = missingItems.iterator();
             while (iterator.hasNext()) {
                 MissingItem item = iterator.next();
@@ -564,7 +574,11 @@ public class MissingRequirementsPanel extends PluginPanel {
                     }
                 }
             }
-            missingItems.add(new DynamicMissingItem(names, itemIds, intervalMs));
+            List<BufferedImage> icons = new ArrayList<>();
+            for (int i = 0; i < itemIds.length; i++) {
+                icons.add(getItemIcon(itemIds[i], names[i]));
+            }
+            missingItems.add(new DynamicMissingItem(cleanedNames, itemIds, intervalMs, icons));
             updatePanel();
         }
     }
@@ -579,9 +593,14 @@ public class MissingRequirementsPanel extends PluginPanel {
         // Use the same logic as getItemIcon to get and cache the icon
         BufferedImage cachedIcon = iconCache.get(itemId);
         if (cachedIcon != null) {
+
             return new ImageIcon(cachedIcon);
         }
         BufferedImage icon = itemManager.getImage(itemId);
+        if (icon == null) {
+            log.warn("No icon found for itemId: {}", itemId);
+            icon = createLetterIcon("?");
+        }
         BufferedImage resizedIcon = ImageUtil.resizeImage(icon, CELL_SIZE, CELL_SIZE);
         iconCache.put(itemId, resizedIcon);
         return new ImageIcon(resizedIcon);
@@ -591,12 +610,16 @@ public class MissingRequirementsPanel extends PluginPanel {
         private final String[] names;
         private final int[] itemIds;
         private final int intervalMs;
+        private final List<BufferedImage> icons;
 
-        public DynamicMissingItem(String[] names, int[] itemIds, int intervalMs) {
-            super(names[0], itemIds[0], null);
+        public DynamicMissingItem(String[] names, int[] itemIds, int intervalMs, List<BufferedImage> icons) {
+            // Pass the first name, first id, and first icon to the superclass for
+            // compatibility
+            super(names[0], itemIds[0], icons != null && !icons.isEmpty() ? icons.get(0) : null);
             this.names = names;
             this.itemIds = itemIds;
             this.intervalMs = intervalMs;
+            this.icons = icons;
         }
     }
 }
