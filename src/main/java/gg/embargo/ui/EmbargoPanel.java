@@ -209,7 +209,7 @@ public class EmbargoPanel extends PluginPanel {
         if (!isLoggedIn || scheduled) {
             if (client != null && client.getLocalPlayer() != null) {
                 this.isLoggedIn = true;
-                var username = "watch yo jet";//client.getLocalPlayer().getName();
+                var username = client.getLocalPlayer().getName();
 
                 loggedLabel.setText(htmlLabel("Signed in as ", " " + username));
 
@@ -284,19 +284,18 @@ public class EmbargoPanel extends PluginPanel {
                                     for (int i = 0; i < dynamicNames.length; i++) {
                                         itemIds[i] = missingRequirementsPanelX.findItemIdByName(dynamicNames[i].trim());
                                     }
-                                    clientThread.invokeLater(() ->
-                                            missingRequirementsPanelX.addDynamicMissingItem(dynamicNames, itemIds, 3000)
-                                    );
+                                    clientThread.invokeLater(() -> missingRequirementsPanelX
+                                            .addDynamicMissingItem(dynamicNames, itemIds, 3000));
                                 } else {
-                                    clientThread.invokeLater(() ->
-                                            missingRequirementsPanelX.addMissingItem(itemName, missingRequirementsPanelX.findItemIdByName(itemName))
-                                    );
+                                    clientThread.invokeLater(() -> missingRequirementsPanelX.addMissingItem(itemName,
+                                            missingRequirementsPanelX.findItemIdByName(itemName)));
                                 }
                             }
 
                             for (JsonElement mu : missingUntradableItemIdReqs) {
                                 if (alreadyProcessed.contains(mu.getAsString())) {
-                                    log.debug("{} already added, skipping missingUntradableItemIdReqs", mu.getAsString());
+                                    log.debug("{} already added, skipping missingUntradableItemIdReqs",
+                                            mu.getAsString());
                                     continue;
                                 }
                                 missingRequirementsPanelX.addMissingItem("", mu.getAsInt());

@@ -10,8 +10,6 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.http.api.item.ItemPrice;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.swing.*;
@@ -143,7 +141,25 @@ public class MissingRequirementsPanel extends PluginPanel {
             for (DynamicItems dynamicItem : dynamicItemsSet) {
                 if (cleanedName.contains(dynamicItem.getLabel())) {
                     isDynamicItem = true;
-                    boolean didRefreshItem = refreshDynamicItems(itemName, dynamicItemsSet);
+                    // Use getSpecialIcon for dynamic items
+                    BufferedImage specialIcon = getSpecialIcon(cleanedName);
+                    boolean didRefreshItem = false;
+                    if (specialIcon != null) {
+                        // Remove any existing dynamic item of this type and add with special icon
+                        Iterator<MissingItem> iterator = missingItems.iterator();
+                        while (iterator.hasNext()) {
+                            MissingItem item = iterator.next();
+                            if (item.getItemName().contains(dynamicItem.getLabel())) {
+                                iterator.remove();
+                            }
+                        }
+                        missingItems.add(new MissingItem(cleanedName, -1, specialIcon));
+                        log.debug("Added new dynamic item with special icon: {}", cleanedName);
+                        updatePanel();
+                        didRefreshItem = true;
+                    } else {
+                        didRefreshItem = refreshDynamicItems(itemName, dynamicItemsSet);
+                    }
                     if (didRefreshItem) {
                         return; // Successfully refreshed the dynamic item
                     }
@@ -611,7 +627,18 @@ public class MissingRequirementsPanel extends PluginPanel {
             }
             List<BufferedImage> icons = new ArrayList<>();
             for (int i = 0; i < itemIds.length; i++) {
-                icons.add(getItemIcon(itemIds[i], names[i]));
+                String name = names[i].trim().toLowerCase();
+                BufferedImage special = null;
+                // Only use special icon for exact matches
+                if (name.equals("ehb") || name.equals("ehp") || name.equals("community points")
+                        || name.equals("account points") || name.equals("total level")) {
+                    special = getSpecialIcon(name);
+                }
+                if (special != null) {
+                    icons.add(special);
+                } else {
+                    icons.add(getItemIcon(itemIds[i], names[i]));
+                }
             }
             missingItems.add(new DynamicMissingItem(cleanedNames, itemIds, intervalMs, icons));
             updatePanel();
@@ -656,5 +683,31 @@ public class MissingRequirementsPanel extends PluginPanel {
             this.intervalMs = intervalMs;
             this.icons = icons;
         }
+    }
+
+    private static final BufferedImage EHB_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
+            "/ehb_icon.png");
+    private static final BufferedImage EHP_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
+            "/ehp_icon.png");
+    private static final BufferedImage COMMUNITY_POINTS_ICON = ImageUtil.resizeImage(
+            ImageUtil.loadImageResource(MissingRequirementsPanel.class, "/community_points_icon.png"), 24, 24);
+    private static final BufferedImage ACCOUNT_POINTS_ICON =
+            ImageUtil.loadImageResource(MissingRequirementsPanel.class,  "/account_points_icon.png");
+    private static final BufferedImage OVERALL_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
+            "/overall_icon.png");
+
+    private BufferedImage getSpecialIcon(String name) {
+        String n = name.trim().toLowerCase();
+        if (n.contains("ehb"))
+            return EHB_ICON;
+        if (n.contains("ehp"))
+            return EHP_ICON;
+        if (n.contains("community points"))
+            return COMMUNITY_POINTS_ICON;
+        if (n.contains("account points"))
+            return ACCOUNT_POINTS_ICON;
+        if (n.contains("total level"))
+            return OVERALL_ICON;
+        return null;
     }
 }
