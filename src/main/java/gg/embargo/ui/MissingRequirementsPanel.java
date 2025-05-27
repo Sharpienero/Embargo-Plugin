@@ -329,7 +329,7 @@ public class MissingRequirementsPanel extends PluginPanel {
             dynamicPanel.add(iconLabel, BorderLayout.CENTER);
 
             // Set initial tooltip
-            dynamicPanel.setToolTipText(dyn.names[0]);
+            iconLabel.setToolTipText(buildTooltipText(new MissingItem(dyn.names[0], dyn.itemIds[0], dyn.icons.get(0))));
 
             Timer timer = new Timer();
             timer.scheduleAtFixedRate(new TimerTask() {
@@ -340,7 +340,8 @@ public class MissingRequirementsPanel extends PluginPanel {
                     SwingUtilities.invokeLater(() -> {
                         idx = (idx + 1) % dyn.names.length;
                         iconLabel.setIcon(new ImageIcon(dyn.icons.get(idx)));
-                        dynamicPanel.setToolTipText(dyn.names[idx]);
+                        iconLabel.setToolTipText(buildTooltipText(
+                                new MissingItem(dyn.names[idx], dyn.itemIds[idx], dyn.icons.get(idx))));
                         dynamicPanel.revalidate();
                         dynamicPanel.repaint();
                     });
