@@ -60,21 +60,10 @@ public class CollectionLogManager {
 
     private static final String SUBMIT_URL = "https://embargo.gg/api/runelite/uploadcollectionlog";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
-
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
-
-    // Keeps track of what collection log slots the user has set and map for their counts
-    private static final BitSet clogItemsBitSet = new BitSet();
-    private final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
-
-    private static Integer clogItemsCount = null;
-
-    // Map item ids to bit index in the bitset
-    private static final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
+    private static Map<Integer, Integer> rawClogItems = new HashMap<>();
     private int tickCollectionLogScriptFired = -1;
-    private final HashSet<Integer> collectionLogItemIdsFromCache = new HashSet<>();
 
     private SyncButtonManager syncButtonManager;
 
@@ -123,12 +112,6 @@ public class CollectionLogManager {
                 return false;
             }
             manifestManager.getLatestManifest();
-            collectionLogItemIdsFromCache.addAll(parseCacheForClog());
-            populateCollectionLogItemIdToBitsetIndex();
-            final int[] varbitIds = client.getIndexConfig().getFileIds(VARBITS_ARCHIVE_ID);
-            for (int id : varbitIds) {
-                varbitCompositions.put(id, client.getVarbit(id));
-            }
             return true;
         });
 
@@ -136,10 +119,7 @@ public class CollectionLogManager {
 
     public void shutDown() {
         eventBus.unregister(this);
-
-        clogItemsBitSet.clear();
-        clogItemsCountSet.clear();
-        clogItemsCount = null;
+        rawClogItems.clear();
         syncButtonManager.shutDown();
     }
 
@@ -167,32 +147,10 @@ public class CollectionLogManager {
             case LOGGING_IN:
             case CONNECTION_LOST:
             case LOGIN_SCREEN: // Add this case to handle explicit logout
-                clogItemsBitSet.clear();
-                clogItemsCountSet.clear();
-                clogItemsCount = null;
+                rawClogItems.clear();
                 embargoPanel.logOut();
                 break;
         }
-    }
-
-    /**
-     * Finds the index this itemId is assigned to in the collections mapping.
-     *
-     * @param itemId: The itemId to look up
-     * @return The index of the bit that represents the given itemId, if it is in
-     *         the map. -1 otherwise.
-     */
-    private int lookupCollectionLogItemIndex(int itemId) {
-        // The map has not loaded yet, or failed to load.
-        if (collectionLogItemIdToBitsetIndex.isEmpty()) {
-            return -1;
-        }
-        Integer result = collectionLogItemIdToBitsetIndex.get(itemId);
-        if (result == null) {
-            log.debug("Item id {} not found in the mapping of items", itemId);
-            return -1;
-        }
-        return result;
     }
 
     // CollectionLog Subscribe
@@ -200,20 +158,11 @@ public class CollectionLogManager {
     public void onScriptPreFired(ScriptPreFired preFired) {
         if (syncButtonManager.isSyncAllowed() && preFired.getScriptId() == 4100) {
             tickCollectionLogScriptFired = client.getTickCount();
-            if (collectionLogItemIdToBitsetIndex.isEmpty()) {
-                return;
-            }
-            clogItemsCount = collectionLogItemIdsFromCache.size();
             Object[] args = preFired.getScriptEvent().getArguments();
             int itemId = (int) args[1];
             int itemCount = (int) args[2];
 
-            int idx = lookupCollectionLogItemIndex(itemId);
-            // We should never return -1 under normal circumstances
-            if (idx != -1) {
-                clogItemsBitSet.set(idx);
-                clogItemsCountSet.put(idx, itemCount);
-            }
+            rawClogItems.put(itemId, itemCount);
         }
     }
 
@@ -224,12 +173,12 @@ public class CollectionLogManager {
         }
 
         // TODO: do we want other GameStates?
-        if (client.getGameState() != GameState.LOGGED_IN || varbitCompositions.isEmpty()) {
+        if (client.getGameState() != GameState.LOGGED_IN) {
             return;
         }
 
-        if (manifestManager.getManifest() == null || client.getLocalPlayer() == null) {
-            log.debug("Skipped due to bad manifest: {}", manifest);
+        if (client.getLocalPlayer() == null) {
+            log.debug("Skipped due to local player being null");
             return;
         }
 
@@ -241,7 +190,7 @@ public class CollectionLogManager {
         PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
 
         // Do not send if slot data wasn't generated
-        if (newPlayerData.collectionLogSlots.isEmpty()) {
+        if (newPlayerData.rawCollectionLog.isEmpty()) {
             return;
         }
 
@@ -250,17 +199,12 @@ public class CollectionLogManager {
 
     private PlayerData getPlayerData() {
         PlayerData out = new PlayerData();
-
-        out.collectionLogSlots = Base64.getEncoder().encodeToString(clogItemsBitSet.toByteArray());
-        out.collectionLogCounts = clogItemsCountSet;
-
-        out.collectionLogItemCount = clogItemsCount;
+        out.rawCollectionLog = rawClogItems;
         return out;
     }
 
     private void merge(PlayerData oldPlayerData, PlayerData delta) {
-        oldPlayerData.collectionLogSlots = delta.collectionLogSlots;
-        oldPlayerData.collectionLogItemCount = delta.collectionLogItemCount;
+        oldPlayerData.rawCollectionLog = delta.rawCollectionLog;
     }
 
     private void submitPlayerData(PlayerProfile profileKey, PlayerData delta, PlayerData old) {
@@ -307,99 +251,6 @@ public class CollectionLogManager {
         });
     }
 
-    private void populateCollectionLogItemIdToBitsetIndex() {
-        if (manifestManager.getManifest() == null) {
-            log.debug("populateCollectionLogItemIdToBitsetIndex manifest is NULL");
-
-            // Only log this message once every few seconds to avoid spam
-            if (System.currentTimeMillis() % 5000 < 100) { // Log roughly once every 5 seconds
-                log.debug(
-                        "Manifest is not present so the collection log bitset index will not be updated, will try again");
-            }
-
-            // Request the manifest if needed
-            manifestManager.getLatestManifest();
-
-            // Schedule a retry with a longer delay to reduce spam
-            scheduledExecutorService.schedule(() -> {
-                clientThread.invoke(this::populateCollectionLogItemIdToBitsetIndex);
-            }, 1, TimeUnit.SECONDS);
-
-            return;
-        }
-
-        log.debug("populateCollectionLogItemIdToBitsetIndex manifest is set as intended, continuing");
-
-        clientThread.invoke(() -> {
-            // Add missing keys in order to the map. Order is extremely important here, so
-            // we get a stable map given the same cache data.
-            List<Integer> itemIdsMissingFromManifest = collectionLogItemIdsFromCache
-                    .stream()
-                    .filter((t) -> !manifestManager.getManifest().collections.contains(t))
-                    .sorted()
-                    .collect(Collectors.toList());
-
-            int currentIndex = 0;
-            collectionLogItemIdToBitsetIndex.clear();
-            for (Integer itemId : manifestManager.getManifest().collections)
-                collectionLogItemIdToBitsetIndex.put(itemId, currentIndex++);
-            for (Integer missingItemId : itemIdsMissingFromManifest) {
-                collectionLogItemIdToBitsetIndex.put(missingItemId, currentIndex++);
-            }
-        });
-    }
-
-    /**
-     * Parse the enums and structs in the cache to figure out which item ids
-     * exist in the collection log. This can be diffed with the manifest to
-     * determine the item ids that need to be appended to the end of the
-     * bitset we send to the Embargo server.
-     */
-    private HashSet<Integer> parseCacheForClog() {
-        HashSet<Integer> itemIds = new HashSet<>();
-        // 2102 - Struct that contains the highest level tabs in the collection log
-        // (Bosses, Raids, etc)
-        // https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2102
-        int[] topLevelTabStructIds = client.getEnum(2102).getIntVals();
-        for (int topLevelTabStructIndex : topLevelTabStructIds) {
-            // The collection log top level tab structs contain a param that points to the
-            // enum
-            // that contains the pointers to sub tabs.
-            // ex: https://chisel.weirdgloop.org/structs/index.html?type=structs&id=471
-            StructComposition topLevelTabStruct = client.getStructComposition(topLevelTabStructIndex);
-
-            // Param 683 contains the pointer to the enum that contains the subtabs ids
-            // ex: https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2103
-            int[] subtabStructIndices = client.getEnum(topLevelTabStruct.getIntValue(683)).getIntVals();
-            for (int subtabStructIndex : subtabStructIndices) {
-
-                // The subtab structs are for subtabs in the collection log (Commander Zilyana,
-                // Chambers of Xeric, etc.)
-                // and contain a pointer to the enum that contains all the item ids for that
-                // tab.
-                // ex subtab struct:
-                // https://chisel.weirdgloop.org/structs/index.html?type=structs&id=476
-                // ex subtab enum:
-                // https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2109
-                StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
-                int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
-                for (int clogItemId : clogItems)
-                    itemIds.add(clogItemId);
-            }
-        }
-
-        // Some items with data saved on them have replacements to fix a duping issue
-        // (satchels, flamtaer bag)
-        // Enum 3721 contains a mapping of the item ids to replace -> ids to replace
-        // them with
-        EnumComposition replacements = client.getEnum(3721);
-        for (int badItemId : replacements.getKeys())
-            itemIds.remove(badItemId);
-        for (int goodItemId : replacements.getIntVals())
-            itemIds.add(goodItemId);
-
-        return itemIds;
-    }
 
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {

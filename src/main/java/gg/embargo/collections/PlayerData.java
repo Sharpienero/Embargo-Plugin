@@ -37,8 +37,5 @@ import java.util.Map;
 @AllArgsConstructor
 public class PlayerData
 {
-    public Integer collectionLogItemCount = null;
-    public String collectionLogSlots = "";
-    public Map<Integer, Integer> collectionLogCounts = new HashMap<>();
-
+    public Map<Integer, Integer> rawCollectionLog = new HashMap<>();
 }
