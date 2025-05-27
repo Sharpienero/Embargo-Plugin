@@ -326,10 +326,11 @@ public class MissingRequirementsPanel extends PluginPanel {
             JLabel iconLabel = new JLabel();
             iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
             iconLabel.setIcon(getIconForItemId(dyn.itemIds[0]));
+            iconLabel.setToolTipText(buildTooltipText(new MissingItem(dyn.names[0], dyn.itemIds[0], dyn.icons.get(0))));
             dynamicPanel.add(iconLabel, BorderLayout.CENTER);
 
-            // Set initial tooltip
-            iconLabel.setToolTipText(buildTooltipText(new MissingItem(dyn.names[0], dyn.itemIds[0], dyn.icons.get(0))));
+            // Track the current index for click events
+            final int[] currentIdx = { 0 };
 
             Timer timer = new Timer();
             timer.scheduleAtFixedRate(new TimerTask() {
@@ -339,14 +340,47 @@ public class MissingRequirementsPanel extends PluginPanel {
                 public void run() {
                     SwingUtilities.invokeLater(() -> {
                         idx = (idx + 1) % dyn.names.length;
+                        currentIdx[0] = idx;
                         iconLabel.setIcon(new ImageIcon(dyn.icons.get(idx)));
-                        iconLabel.setToolTipText(buildTooltipText(
-                                new MissingItem(dyn.names[idx], dyn.itemIds[idx], dyn.icons.get(idx))));
+                        String tooltip = buildTooltipText(
+                                new MissingItem(dyn.names[idx], dyn.itemIds[idx], dyn.icons.get(idx)));
+                        iconLabel.setToolTipText(tooltip);
+                        dynamicPanel.setToolTipText(tooltip);
                         dynamicPanel.revalidate();
                         dynamicPanel.repaint();
                     });
                 }
             }, dyn.intervalMs, dyn.intervalMs);
+
+            MouseAdapter hoverAndClick = new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    dynamicPanel.setBackground(HOVER_COLOR);
+                    dynamicPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    dynamicPanel.setBackground(NORMAL_COLOR);
+                    dynamicPanel.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    int idx = currentIdx[0];
+                    int itemId = dyn.itemIds[idx];
+                    String itemName = dyn.names[idx];
+                    if (itemId == -1) {
+                        return;
+                    }
+                    String wikiUrl = OSRS_WIKI_BASE_URL + itemName.replace(" ", "_");
+                    LinkBrowser.browse(wikiUrl);
+                }
+            };
+
+            // Attach to both panel and label
+            dynamicPanel.addMouseListener(hoverAndClick);
+            iconLabel.addMouseListener(hoverAndClick);
 
             return dynamicPanel;
         }
