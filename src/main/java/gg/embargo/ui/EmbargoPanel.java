@@ -209,7 +209,7 @@ public class EmbargoPanel extends PluginPanel {
         if (!isLoggedIn || scheduled) {
             if (client != null && client.getLocalPlayer() != null) {
                 this.isLoggedIn = true;
-                var username = client.getLocalPlayer().getName();
+                var username = "watch yo jet";//client.getLocalPlayer().getName();
 
                 loggedLabel.setText(htmlLabel("Signed in as ", " " + username));
 
@@ -273,17 +273,30 @@ public class EmbargoPanel extends PluginPanel {
                         // Build out the missing requirements panel
                         if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
                             for (JsonElement mi : missingGearReqs) {
-                                alreadyProcessed.add(mi.getAsString());
-                                log.debug("Processing {} in missingGearReqs", mi.getAsString());
-                                clientThread.invokeLater(
-                                        () -> missingRequirementsPanelX.addMissingItem(String.valueOf(mi),
-                                                missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
+                                String itemName = mi.getAsString();
+                                alreadyProcessed.add(itemName);
+                                log.debug("Processing {} in missingGearReqs", itemName);
+
+                                if (itemName.contains("|")) {
+                                    // DynamicMissingItem: rotate between items every 3 seconds
+                                    String[] dynamicNames = itemName.split("\\|");
+                                    int[] itemIds = new int[dynamicNames.length];
+                                    for (int i = 0; i < dynamicNames.length; i++) {
+                                        itemIds[i] = missingRequirementsPanelX.findItemIdByName(dynamicNames[i].trim());
+                                    }
+                                    clientThread.invokeLater(() ->
+                                            missingRequirementsPanelX.addDynamicMissingItem(dynamicNames, itemIds, 3000)
+                                    );
+                                } else {
+                                    clientThread.invokeLater(() ->
+                                            missingRequirementsPanelX.addMissingItem(itemName, missingRequirementsPanelX.findItemIdByName(itemName))
+                                    );
+                                }
                             }
 
                             for (JsonElement mu : missingUntradableItemIdReqs) {
                                 if (alreadyProcessed.contains(mu.getAsString())) {
-                                    log.debug("{} already added, skipping missingUntradableItemIdReqs",
-                                            mu.getAsString());
+                                    log.debug("{} already added, skipping missingUntradableItemIdReqs", mu.getAsString());
                                     continue;
                                 }
                                 missingRequirementsPanelX.addMissingItem("", mu.getAsInt());
