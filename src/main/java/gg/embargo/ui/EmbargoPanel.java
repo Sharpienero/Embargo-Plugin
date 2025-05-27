@@ -81,7 +81,7 @@ public class EmbargoPanel extends PluginPanel {
 
     void setupVersionPanel() {
         // Set up Embargo Clan Version at top of Version panel
-        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.6"));
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.8"));
         version.setFont(smallFont);
 
         // Set version's font
