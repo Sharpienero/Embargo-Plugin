@@ -44,6 +44,15 @@ public class MissingRequirementsPanel extends PluginPanel {
     private final MouseAdapter itemMouseAdapter = createMouseAdapter();
     private final Object lock = new Object();
 
+    private static final BufferedImage EHB_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
+            "/ehb_icon.png");
+    private static final BufferedImage COMMUNITY_POINTS_ICON = ImageUtil.resizeImage(
+            ImageUtil.loadImageResource(MissingRequirementsPanel.class, "/community_points_icon.png"), 24, 24);
+    private static final BufferedImage ACCOUNT_POINTS_ICON =
+            ImageUtil.loadImageResource(MissingRequirementsPanel.class,  "/account_points_icon.png");
+    private static final BufferedImage OVERALL_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
+            "/overall_icon.png");
+
     @Getter
     private enum DynamicItems {
         ACCOUNT_POINTS("account points"),
@@ -143,16 +152,10 @@ public class MissingRequirementsPanel extends PluginPanel {
                     isDynamicItem = true;
                     // Use getSpecialIcon for dynamic items
                     BufferedImage specialIcon = getSpecialIcon(cleanedName);
-                    boolean didRefreshItem = false;
+                    boolean didRefreshItem;
                     if (specialIcon != null) {
                         // Remove any existing dynamic item of this type and add with special icon
-                        Iterator<MissingItem> iterator = missingItems.iterator();
-                        while (iterator.hasNext()) {
-                            MissingItem item = iterator.next();
-                            if (item.getItemName().contains(dynamicItem.getLabel())) {
-                                iterator.remove();
-                            }
-                        }
+                        missingItems.removeIf(item -> item.getItemName().contains(dynamicItem.getLabel()));
                         missingItems.add(new MissingItem(cleanedName, -1, specialIcon));
                         log.debug("Added new dynamic item with special icon: {}", cleanedName);
                         updatePanel();
@@ -611,8 +614,7 @@ public class MissingRequirementsPanel extends PluginPanel {
                     .map(n -> n.replace("\"", "").replace(" (uncharged)", ""))
                     .toArray(String[]::new);
 
-            // Remove any existing DynamicMissingItem with the same cleaned names (ignoring
-            // order)
+            // Remove any existing DynamicMissingItem with the same cleaned names
             Set<String> newNamesSet = new HashSet<>(Arrays.asList(cleanedNames));
             Iterator<MissingItem> iterator = missingItems.iterator();
             while (iterator.hasNext()) {
@@ -675,8 +677,6 @@ public class MissingRequirementsPanel extends PluginPanel {
         private final List<BufferedImage> icons;
 
         public DynamicMissingItem(String[] names, int[] itemIds, int intervalMs, List<BufferedImage> icons) {
-            // Pass the first name, first id, and first icon to the superclass for
-            // compatibility
             super(names[0], itemIds[0], icons != null && !icons.isEmpty() ? icons.get(0) : null);
             this.names = names;
             this.itemIds = itemIds;
@@ -685,23 +685,10 @@ public class MissingRequirementsPanel extends PluginPanel {
         }
     }
 
-    private static final BufferedImage EHB_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
-            "/ehb_icon.png");
-    private static final BufferedImage EHP_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
-            "/ehp_icon.png");
-    private static final BufferedImage COMMUNITY_POINTS_ICON = ImageUtil.resizeImage(
-            ImageUtil.loadImageResource(MissingRequirementsPanel.class, "/community_points_icon.png"), 24, 24);
-    private static final BufferedImage ACCOUNT_POINTS_ICON =
-            ImageUtil.loadImageResource(MissingRequirementsPanel.class,  "/account_points_icon.png");
-    private static final BufferedImage OVERALL_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
-            "/overall_icon.png");
-
     private BufferedImage getSpecialIcon(String name) {
         String n = name.trim().toLowerCase();
         if (n.contains("ehb"))
             return EHB_ICON;
-        if (n.contains("ehp"))
-            return EHP_ICON;
         if (n.contains("community points"))
             return COMMUNITY_POINTS_ICON;
         if (n.contains("account points"))
