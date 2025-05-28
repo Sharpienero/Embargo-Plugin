@@ -54,7 +54,7 @@ public class MissingRequirementsPanel extends PluginPanel {
             "/overall_icon.png");
 
     @Getter
-    private enum DynamicItems {
+    public enum DynamicItems {
         ACCOUNT_POINTS("account points"),
         EHB("EHB"),
         COMMUNITY_POINTS("community points"),
@@ -65,7 +65,6 @@ public class MissingRequirementsPanel extends PluginPanel {
         DynamicItems(String label) {
             this.label = label;
         }
-
     }
 
     @Inject
