@@ -42,6 +42,7 @@ import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ItemManager;
 import okhttp3.*;
 
 import javax.inject.Inject;
@@ -62,7 +63,7 @@ public class CollectionLogManager {
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
-    private static Map<Integer, Integer> rawClogItems = new HashMap<>();
+    private static List<Map<String, Map<String, Object>>> rawClogItems = new ArrayList<>();
     private int tickCollectionLogScriptFired = -1;
 
     private SyncButtonManager syncButtonManager;
@@ -87,6 +88,9 @@ public class CollectionLogManager {
 
     @Inject
     private ManifestManager manifestManager;
+
+    @Inject
+    private ItemManager itemManager;
 
     private final Client client;
     private final ClientThread clientThread;
@@ -162,7 +166,27 @@ public class CollectionLogManager {
             int itemId = (int) args[1];
             int itemCount = (int) args[2];
 
-            rawClogItems.put(itemId, itemCount);
+            String itemName;
+            try {
+                ItemComposition ic = itemManager.getItemComposition(itemId);
+                itemName = ic.getName();
+            } catch (Exception e) {
+                itemName = String.valueOf(itemId);
+            }
+
+            // Remove any existing entry for this itemName
+            String finalItemName = itemName;
+            rawClogItems.removeIf(map -> map.containsKey(finalItemName));
+
+            // Add the new entry
+            Map<String, Object> itemData = new HashMap<>();
+            itemData.put("id", itemId);
+            itemData.put("quantity", itemCount);
+
+            Map<String, Map<String, Object>> entry = new HashMap<>();
+            entry.put(itemName, itemData);
+
+            rawClogItems.add(entry);
         }
     }
 
@@ -190,7 +214,7 @@ public class CollectionLogManager {
         PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
 
         // Do not send if slot data wasn't generated
-        if (newPlayerData.rawCollectionLog.isEmpty()) {
+        if (newPlayerData.rawClogItems.isEmpty()) {
             return;
         }
 
@@ -199,12 +223,12 @@ public class CollectionLogManager {
 
     private PlayerData getPlayerData() {
         PlayerData out = new PlayerData();
-        out.rawCollectionLog = rawClogItems;
+        out.rawClogItems = rawClogItems;
         return out;
     }
 
     private void merge(PlayerData oldPlayerData, PlayerData delta) {
-        oldPlayerData.rawCollectionLog = delta.rawCollectionLog;
+        oldPlayerData.rawClogItems = delta.rawClogItems;
     }
 
     private void submitPlayerData(PlayerProfile profileKey, PlayerData delta, PlayerData old) {
@@ -250,7 +274,6 @@ public class CollectionLogManager {
             }
         });
     }
-
 
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
