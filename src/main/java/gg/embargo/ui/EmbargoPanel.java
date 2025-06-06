@@ -81,7 +81,7 @@ public class EmbargoPanel extends PluginPanel {
 
     void setupVersionPanel() {
         // Set up Embargo Clan Version at top of Version panel
-        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.6"));
+        JLabel version = new JLabel(htmlLabel("Embargo Clan Version: ", "1.4.8"));
         version.setFont(smallFont);
 
         // Set version's font
@@ -273,11 +273,23 @@ public class EmbargoPanel extends PluginPanel {
                         // Build out the missing requirements panel
                         if (missingGearReqs.size() > 0 || missingUntradableItemIdReqs.size() > 0) {
                             for (JsonElement mi : missingGearReqs) {
-                                alreadyProcessed.add(mi.getAsString());
-                                log.debug("Processing {} in missingGearReqs", mi.getAsString());
-                                clientThread.invokeLater(
-                                        () -> missingRequirementsPanelX.addMissingItem(String.valueOf(mi),
-                                                missingRequirementsPanelX.findItemIdByName(String.valueOf(mi))));
+                                String itemName = mi.getAsString();
+                                alreadyProcessed.add(itemName);
+                                log.debug("Processing {} in missingGearReqs", itemName);
+
+                                if (itemName.contains("|")) {
+                                    // DynamicMissingItem: rotate between items every 3 seconds
+                                    String[] dynamicNames = itemName.split("\\|");
+                                    int[] itemIds = new int[dynamicNames.length];
+                                    for (int i = 0; i < dynamicNames.length; i++) {
+                                        itemIds[i] = missingRequirementsPanelX.findItemIdByName(dynamicNames[i].trim());
+                                    }
+                                    clientThread.invokeLater(() -> missingRequirementsPanelX
+                                            .addDynamicMissingItem(dynamicNames, itemIds, 3000));
+                                } else {
+                                    clientThread.invokeLater(() -> missingRequirementsPanelX.addMissingItem(itemName,
+                                            missingRequirementsPanelX.findItemIdByName(itemName)));
+                                }
                             }
 
                             for (JsonElement mu : missingUntradableItemIdReqs) {

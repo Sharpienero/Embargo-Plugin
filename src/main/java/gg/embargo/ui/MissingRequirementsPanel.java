@@ -10,8 +10,6 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import net.runelite.http.api.item.ItemPrice;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.swing.*;
@@ -23,6 +21,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
+import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -45,8 +44,17 @@ public class MissingRequirementsPanel extends PluginPanel {
     private final MouseAdapter itemMouseAdapter = createMouseAdapter();
     private final Object lock = new Object();
 
+    private static final BufferedImage EHB_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
+            "/ehb_icon.png");
+    private static final BufferedImage COMMUNITY_POINTS_ICON = ImageUtil.resizeImage(
+            ImageUtil.loadImageResource(MissingRequirementsPanel.class, "/community_points_icon.png"), 24, 24);
+    private static final BufferedImage ACCOUNT_POINTS_ICON =
+            ImageUtil.loadImageResource(MissingRequirementsPanel.class,  "/account_points_icon.png");
+    private static final BufferedImage OVERALL_ICON = ImageUtil.loadImageResource(MissingRequirementsPanel.class,
+            "/overall_icon.png");
+
     @Getter
-    private enum DynamicItems {
+    public enum DynamicItems {
         ACCOUNT_POINTS("account points"),
         EHB("EHB"),
         COMMUNITY_POINTS("community points"),
@@ -57,7 +65,6 @@ public class MissingRequirementsPanel extends PluginPanel {
         DynamicItems(String label) {
             this.label = label;
         }
-
     }
 
     @Inject
@@ -142,7 +149,19 @@ public class MissingRequirementsPanel extends PluginPanel {
             for (DynamicItems dynamicItem : dynamicItemsSet) {
                 if (cleanedName.contains(dynamicItem.getLabel())) {
                     isDynamicItem = true;
-                    boolean didRefreshItem = refreshDynamicItems(itemName, dynamicItemsSet);
+                    // Use getSpecialIcon for dynamic items
+                    BufferedImage specialIcon = getSpecialIcon(cleanedName);
+                    boolean didRefreshItem;
+                    if (specialIcon != null) {
+                        // Remove any existing dynamic item of this type and add with special icon
+                        missingItems.removeIf(item -> item.getItemName().contains(dynamicItem.getLabel()));
+                        missingItems.add(new MissingItem(cleanedName, -1, specialIcon));
+                        log.debug("Added new dynamic item with special icon: {}", cleanedName);
+                        updatePanel();
+                        didRefreshItem = true;
+                    } else {
+                        didRefreshItem = refreshDynamicItems(itemName, dynamicItemsSet);
+                    }
                     if (didRefreshItem) {
                         return; // Successfully refreshed the dynamic item
                     }
@@ -313,6 +332,77 @@ public class MissingRequirementsPanel extends PluginPanel {
      * Creates a panel for a single item with icon and hover/click functionality
      */
     private JPanel createItemPanel(MissingItem item) {
+        if (item instanceof DynamicMissingItem) {
+            DynamicMissingItem dyn = (DynamicMissingItem) item;
+            JPanel dynamicPanel = new JPanel(new BorderLayout());
+            dynamicPanel.setBackground(NORMAL_COLOR);
+            dynamicPanel.setBorder(new LineBorder(Color.BLACK, 1));
+            dynamicPanel.setPreferredSize(new Dimension(CELL_SIZE, CELL_SIZE));
+            dynamicPanel.setMinimumSize(new Dimension(CELL_SIZE, CELL_SIZE));
+            dynamicPanel.setMaximumSize(new Dimension(CELL_SIZE, CELL_SIZE));
+
+            JLabel iconLabel = new JLabel();
+            iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            iconLabel.setIcon(getIconForItemId(dyn.itemIds[0]));
+            iconLabel.setToolTipText(buildTooltipText(new MissingItem(dyn.names[0], dyn.itemIds[0], dyn.icons.get(0))));
+            dynamicPanel.add(iconLabel, BorderLayout.CENTER);
+
+            // Track the current index for click events
+            final int[] currentIdx = { 0 };
+
+            Timer timer = new Timer();
+            timer.scheduleAtFixedRate(new TimerTask() {
+                int idx = 0;
+
+                @Override
+                public void run() {
+                    SwingUtilities.invokeLater(() -> {
+                        idx = (idx + 1) % dyn.names.length;
+                        currentIdx[0] = idx;
+                        iconLabel.setIcon(new ImageIcon(dyn.icons.get(idx)));
+                        String tooltip = buildTooltipText(
+                                new MissingItem(dyn.names[idx], dyn.itemIds[idx], dyn.icons.get(idx)));
+                        iconLabel.setToolTipText(tooltip);
+                        dynamicPanel.setToolTipText(tooltip);
+                        dynamicPanel.revalidate();
+                        dynamicPanel.repaint();
+                    });
+                }
+            }, dyn.intervalMs, dyn.intervalMs);
+
+            MouseAdapter hoverAndClick = new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    dynamicPanel.setBackground(HOVER_COLOR);
+                    dynamicPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    dynamicPanel.setBackground(NORMAL_COLOR);
+                    dynamicPanel.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    int idx = currentIdx[0];
+                    int itemId = dyn.itemIds[idx];
+                    String itemName = dyn.names[idx];
+                    if (itemId == -1) {
+                        return;
+                    }
+                    String wikiUrl = OSRS_WIKI_BASE_URL + itemName.replace(" ", "_");
+                    LinkBrowser.browse(wikiUrl);
+                }
+            };
+
+            // Attach to both panel and label
+            dynamicPanel.addMouseListener(hoverAndClick);
+            iconLabel.addMouseListener(hoverAndClick);
+
+            return dynamicPanel;
+        }
+
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(NORMAL_COLOR);
         panel.setBorder(new LineBorder(Color.BLACK, 1));
@@ -320,7 +410,6 @@ public class MissingRequirementsPanel extends PluginPanel {
         panel.setMinimumSize(new Dimension(CELL_SIZE, CELL_SIZE));
         panel.setMaximumSize(new Dimension(CELL_SIZE, CELL_SIZE));
 
-        // Get the item icon
         JLabel iconLabel = new JLabel(new ImageIcon(item.getIcon()));
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
         panel.add(iconLabel, BorderLayout.CENTER);
@@ -507,5 +596,104 @@ public class MissingRequirementsPanel extends PluginPanel {
             this.itemId = itemId;
             this.icon = icon;
         }
+    }
+
+    /**
+     * Adds a dynamic missing item that rotates its icon and name every intervalMs
+     * milliseconds.
+     * 
+     * @param names      Array of item names to display.
+     * @param itemIds    Array of item IDs corresponding to the names.
+     * @param intervalMs Interval in milliseconds to rotate the icon/name.
+     */
+    public void addDynamicMissingItem(String[] names, int[] itemIds, int intervalMs) {
+        synchronized (lock) {
+            // Clean all names like addMissingItem does
+            String[] cleanedNames = Arrays.stream(names)
+                    .map(n -> n.replace("\"", "").replace(" (uncharged)", ""))
+                    .toArray(String[]::new);
+
+            // Remove any existing DynamicMissingItem with the same cleaned names
+            Set<String> newNamesSet = new HashSet<>(Arrays.asList(cleanedNames));
+            Iterator<MissingItem> iterator = missingItems.iterator();
+            while (iterator.hasNext()) {
+                MissingItem item = iterator.next();
+                if (item instanceof DynamicMissingItem) {
+                    DynamicMissingItem dyn = (DynamicMissingItem) item;
+                    Set<String> existingNamesSet = new HashSet<>(Arrays.asList(dyn.names));
+                    if (existingNamesSet.equals(newNamesSet)) {
+                        iterator.remove();
+                    }
+                }
+            }
+            List<BufferedImage> icons = new ArrayList<>();
+            for (int i = 0; i < itemIds.length; i++) {
+                String name = names[i].trim().toLowerCase();
+                BufferedImage special = null;
+                // Only use special icon for exact matches
+                if (name.equals("ehb") || name.equals("ehp") || name.equals("community points")
+                        || name.equals("account points") || name.equals("total level")) {
+                    special = getSpecialIcon(name);
+                }
+                if (special != null) {
+                    icons.add(special);
+                } else {
+                    icons.add(getItemIcon(itemIds[i], names[i]));
+                }
+            }
+            missingItems.add(new DynamicMissingItem(cleanedNames, itemIds, intervalMs, icons));
+            updatePanel();
+        }
+    }
+
+    // Helper method to get an icon for an item ID
+    private Icon getIconForItemId(int itemId) {
+        if (itemId == -1) {
+            // Return a default icon or a placeholder if itemId is invalid
+            BufferedImage icon = createLetterIcon("?");
+            return new ImageIcon(icon);
+        }
+        // Use the same logic as getItemIcon to get and cache the icon
+        BufferedImage cachedIcon = iconCache.get(itemId);
+        if (cachedIcon != null) {
+
+            return new ImageIcon(cachedIcon);
+        }
+        BufferedImage icon = itemManager.getImage(itemId);
+        if (icon == null) {
+            log.warn("No icon found for itemId: {}", itemId);
+            icon = createLetterIcon("?");
+        }
+        BufferedImage resizedIcon = ImageUtil.resizeImage(icon, CELL_SIZE, CELL_SIZE);
+        iconCache.put(itemId, resizedIcon);
+        return new ImageIcon(resizedIcon);
+    }
+
+    private static class DynamicMissingItem extends MissingItem {
+        private final String[] names;
+        private final int[] itemIds;
+        private final int intervalMs;
+        private final List<BufferedImage> icons;
+
+        public DynamicMissingItem(String[] names, int[] itemIds, int intervalMs, List<BufferedImage> icons) {
+            super(names[0], itemIds[0], icons != null && !icons.isEmpty() ? icons.get(0) : null);
+            this.names = names;
+            this.itemIds = itemIds;
+            this.intervalMs = intervalMs;
+            this.icons = icons;
+        }
+    }
+
+    private BufferedImage getSpecialIcon(String name) {
+        String n = name.trim().toLowerCase();
+        if (n.contains("ehb"))
+            return EHB_ICON;
+        if (n.contains("community points"))
+            return COMMUNITY_POINTS_ICON;
+        if (n.contains("account points"))
+            return ACCOUNT_POINTS_ICON;
+        if (n.contains("total level"))
+            return OVERALL_ICON;
+        return null;
     }
 }

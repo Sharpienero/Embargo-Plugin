@@ -29,7 +29,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -37,8 +39,5 @@ import java.util.Map;
 @AllArgsConstructor
 public class PlayerData
 {
-    public Integer collectionLogItemCount = null;
-    public String collectionLogSlots = "";
-    public Map<Integer, Integer> collectionLogCounts = new HashMap<>();
-
+    public List<Map<String, Map<String, Object>>> rawClogItems = new ArrayList<>();
 }
