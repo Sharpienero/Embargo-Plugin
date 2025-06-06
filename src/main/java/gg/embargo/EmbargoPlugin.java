@@ -316,38 +316,6 @@ public class EmbargoPlugin extends Plugin {
 		}
 	}
 
-	@Getter
-	public enum MinigameCompletionMessages {
-		WINTERTODT("Your subdued Wintertodt count is:"),
-		TEMPOROSS("Your Tempoross kill count is:"),
-		GOTR("Amount of rifts you have closed:"),
-		SOUL_WARS("team has defeated the Avatar"),
-		BARBARIAN_ASSAULT("Wave 10 duration"),
-		VOLCANIC_MINE("Your fragments disintegrate");
-
-		private final String completionMessage;
-
-		MinigameCompletionMessages(String completionMessage) {
-			this.completionMessage = completionMessage;
-		}
-	}
-
-	@Getter
-	public enum RaidCompletionMessages {
-		COX("Congratulations - your raid is complete!"),
-		COX_CM("Your completed Chambers of Xeric Challenge Mode count is:"),
-		TOB("Theatre of Blood total completion time:"),
-		HM_TOB("Your completed Theatre of Blood: Hard Mode count is:"),
-		TOA("Tombs of Amascut total completion time:"),
-		TOA_EXPERT("Tombs of Amascut: Expert Mode total completion time:");
-
-		private final String completionMessage;
-
-		RaidCompletionMessages(String completionMessage) {
-			this.completionMessage = completionMessage;
-		}
-	}
-
 	@Subscribe
 	public void onChatMessage(ChatMessage chatMessage) {
 		if (client == null || manifestManager.getLatestManifest() == null)

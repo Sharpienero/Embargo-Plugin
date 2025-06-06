@@ -159,13 +159,7 @@ public class DataManager {
     }
 
     public List<Player> getSurroundingPlayers() {
-        List<Player> pl = new ArrayList<>();
-        if (client == null || client.getTopLevelWorldView() == null
-                || client.getTopLevelWorldView().players() == null) {
-            return pl;
-        }
-
-        return (List<Player>) client.getTopLevelWorldView().players();
+        return client.getPlayers();
     }
 
     public boolean shouldTrackLoot(String bossName) {
