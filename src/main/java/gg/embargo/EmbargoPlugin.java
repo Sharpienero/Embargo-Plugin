@@ -4,14 +4,12 @@ import com.google.inject.Provides;
 import gg.embargo.collections.*;
 import gg.embargo.commands.CommandManager;
 import gg.embargo.eastereggs.NPCRenameManager;
-import gg.embargo.eastereggs.SoundManager;
 import gg.embargo.manifest.ManifestManager;
 import gg.embargo.ui.EmbargoPanel;
 import gg.embargo.eastereggs.ItemRenameManager;
 import gg.embargo.ui.SyncButtonManager;
 import gg.embargo.noticeboard.NoticeBoardManager;
 import gg.embargo.untrackables.UntrackableItemManager;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
@@ -88,9 +86,6 @@ public class EmbargoPlugin extends Plugin {
 
 	@Inject
 	private NPCRenameManager npcRenameManager;
-
-	@Inject
-	private SoundManager soundManager;
 
 	@Inject
 	public ManifestManager manifestManager;
@@ -173,7 +168,6 @@ public class EmbargoPlugin extends Plugin {
 		if (config != null && config.enableClanEasterEggs()) {
 			itemRenameManager.startUp();
 			npcRenameManager.startUp();
-			soundManager.startUp();
 		}
 	}
 
@@ -198,7 +192,6 @@ public class EmbargoPlugin extends Plugin {
 		syncButtonManager.shutDown();
 		itemRenameManager.shutDown();
 		npcRenameManager.shutDown();
-		soundManager.shutDown();
 		commandManager.shutDown();
 	}
 

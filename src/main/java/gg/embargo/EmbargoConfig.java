@@ -95,33 +95,6 @@ public interface EmbargoConfig extends Config
         return true;
     }
 
-    @ConfigItem(
-            keyName = "enableCustomSounds",
-            name = "Enable Custom Sounds",
-            description = "Enables custom sounds; e.g white light @ tob/purple @ tob",
-            position = 6,
-            section = easterEggSettings
-    )
-    default boolean enableCustomSounds() {
-        return true;
-    }
-
-    @Range(
-            min=0,
-            max=200
-    )
-    @ConfigItem(
-            keyName = "easterEggVolume",
-            name = "Sound volume",
-            description = "Controls the volume",
-            position = 7,
-            section = easterEggSettings
-    )
-    default int announcementVolume()
-    {
-        return 60;
-    }
-
     @ConfigSection(
             name = "Chat Commands",
             description = "Section that houses Chat Command options",
