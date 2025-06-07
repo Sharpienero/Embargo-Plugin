@@ -78,8 +78,7 @@ public class CommandManager {
         updateChatMessage(chatMessage, loadingMessage);
 
         String finalMemberName = memberName.replace('\u00A0', ' ').trim();
-        String encodedName = URLEncoder.encode(finalMemberName, StandardCharsets.UTF_8);
-        dataManager.getProfileAsync(encodedName, true).thenAccept(embargoProfileData -> {
+        dataManager.getProfileAsync(finalMemberName, true).thenAccept(embargoProfileData -> {
             // Null checks for safety
             if (embargoProfileData == null
                     || embargoProfileData.get("accountPoints") == null
